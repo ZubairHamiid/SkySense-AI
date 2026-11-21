@@ -1,0 +1,21 @@
+# Environments & Sensitive Keys
+.env
+.venv/
+venv/
+env/
+.conda/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# System & IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.tmp
