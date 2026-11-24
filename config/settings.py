@@ -78,6 +78,14 @@ PAKISTAN_CITIES = {
         "climate": "Industrial Agricultural / Particulate Heavy",
         "elevation_m": 184
     },
+    "Sargodha": {
+        "lat": 32.0836,
+        "lon": 72.6711,
+        "timezone": "Asia/Karachi",
+        "province": "Punjab",
+        "climate": "Agricultural Canal Basin / Smog-Prone",
+        "elevation_m": 190
+    },
     "Rawalpindi": {
         "lat": 33.5651,
         "lon": 73.0169,

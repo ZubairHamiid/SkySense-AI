@@ -21,7 +21,8 @@ from src.dashboard.ui_components import (
     get_weather_icon_and_desc,
     plot_cinematic_spline_curve,
     render_hourly_cards_html,
-    render_city_chips_html
+    render_city_chips_html,
+    plot_model_comparison_bar
 )
 from src.pipeline.feature_store import FeatureStoreManager
 from src.pipeline.model_registry import ModelRegistry
@@ -327,6 +328,10 @@ with tech_tabs[1]:
     st.caption("Benchmark scores across Statistical (AutoReg), Classical ML (Ridge, Random Forest, XGBoost), Deep Learning (MLP), and 24h Naive Persistence Baseline.")
     leaderboard_df = registry.get_leaderboard()
     if not leaderboard_df.empty:
+        try:
+            st.plotly_chart(plot_model_comparison_bar(leaderboard_df), use_container_width=True)
+        except Exception:
+            pass
         st.dataframe(
             leaderboard_df.style.highlight_max(subset=["Validation R²"], color="#1e3a8a")
                                .highlight_min(subset=["Validation RMSE", "Validation MAE"], color="#064e3b"),

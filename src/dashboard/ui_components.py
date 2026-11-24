@@ -394,3 +394,46 @@ def render_city_chips_html(cities_meta: Dict[str, Dict[str, Any]], active_city: 
         """)
         
     return "".join(chips_html)
+
+
+def plot_model_comparison_bar(leaderboard_df: pd.DataFrame) -> go.Figure:
+    """
+    Renders a grouped comparison bar chart of models across metrics.
+    Robust to column naming variations (e.g., 'Metric' vs 'Target Metric').
+    """
+    if leaderboard_df.empty:
+        return go.Figure()
+        
+    df = leaderboard_df.copy()
+    x_col = "Metric" if "Metric" in df.columns else ("Target Metric" if "Target Metric" in df.columns else df.columns[0])
+    color_col = "Family" if "Family" in df.columns else ("Model Family" if "Model Family" in df.columns else "Model")
+    y_col = "Validation RMSE" if "Validation RMSE" in df.columns else df.columns[3]
+    
+    hover_cols = [c for c in ["Model", "Validation R²", "Validation MAE"] if c in df.columns]
+    
+    fig = px.bar(
+        df,
+        x=x_col,
+        y=y_col,
+        color=color_col,
+        barmode="group",
+        hover_data=hover_cols,
+        title="<b>Validation RMSE Comparison Across Model Families</b>",
+        template="plotly_dark",
+        color_discrete_map={
+            "Classical_ML": "#38bdf8",
+            "Statistical": "#f59e0b",
+            "Deep_Learning": "#a855f7",
+            "Baseline": "#64748b"
+        }
+    )
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(15, 23, 42, 0.4)",
+        margin=dict(l=20, r=20, t=40, b=20),
+        height=320,
+        xaxis_title="Atmospheric Metric",
+        yaxis_title="Validation RMSE"
+    )
+    return fig
+
