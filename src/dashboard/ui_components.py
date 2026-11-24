@@ -3,6 +3,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
 import numpy as np
+import textwrap
 from datetime import datetime
 from typing import Dict, Any, List, Tuple
 
@@ -394,6 +395,95 @@ def render_city_chips_html(cities_meta: Dict[str, Dict[str, Any]], active_city: 
         """)
         
     return "".join(chips_html)
+
+
+def render_left_panel_html(selected_city: str, aqi_val: float, cat_name: str, bg_col: str, text_col: str, cities_summary: Dict[str, Any]) -> str:
+    """Renders the left widget card without leading whitespace to prevent markdown code blocks."""
+    chips_html = render_city_chips_html(cities_summary, selected_city)
+    html = f"""<div class="widget-glass-card">
+<div>
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+<span style="font-size:0.8rem; color:#94a3b8; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">Air & Hazard Status</span>
+<span style="background:{bg_col}25; border:1px solid {bg_col}; color:{bg_col}; padding:3px 10px; border-radius:9999px; font-size:0.75rem; font-weight:700;">
+{cat_name.upper()}
+</span>
+</div>
+<div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:18px; padding:18px; margin-bottom:20px;">
+<div style="display:flex; justify-content:space-between; align-items:center;">
+<div>
+<div style="font-size:0.75rem; color:#94a3b8;">AQI Metric (24h Ahead)</div>
+<div style="font-size:2.4rem; font-weight:800; color:{bg_col}; font-family:'JetBrains Mono'; line-height:1.1;">{aqi_val:.0f}</div>
+</div>
+<div style="text-align:right;">
+<span style="background:{bg_col}; color:{text_col}; padding:4px 12px; border-radius:9999px; font-size:0.75rem; font-weight:800;">
+{cat_name.split(' ')[0]}
+</span>
+<div style="font-size:0.7rem; color:#94a3b8; margin-top:6px;">PM2.5 / PM10 EPA</div>
+</div>
+</div>
+</div>
+<div style="margin-bottom:20px;">
+<div style="font-size:0.8rem; color:#94a3b8; font-weight:600; text-transform:uppercase; margin-bottom:10px;">Targeted Advisories</div>
+<div style="background:rgba(59,130,246,0.1); border-left:3px solid #3b82f6; border-radius:8px; padding:10px 12px; margin-bottom:8px; font-size:0.8rem; color:#e2e8f0;">
+<b>👥 Public:</b> Limit peak-hour travel & seal windows during stagnant wind.
+</div>
+<div style="background:rgba(245,158,11,0.1); border-left:3px solid #f59e0b; border-radius:8px; padding:10px 12px; margin-bottom:8px; font-size:0.8rem; color:#e2e8f0;">
+<b>🫁 Sensitive:</b> Strict indoor air purification; keep rescue inhalers accessible.
+</div>
+<div style="background:rgba(239,68,68,0.1); border-left:3px solid #ef4444; border-radius:8px; padding:10px 12px; font-size:0.8rem; color:#e2e8f0;">
+<b>👷 Workers:</b> Mandatory N95 particulate PPE & 15-min shaded hydration breaks.
+</div>
+</div>
+<div>
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+<span style="font-size:0.8rem; color:#94a3b8; font-weight:600; text-transform:uppercase;">Major Basins</span>
+<span style="font-size:0.75rem; color:#38bdf8;">Real-Time</span>
+</div>
+{chips_html}
+</div>
+</div>
+</div>"""
+    return html
+
+
+def render_hero_header_html(selected_city: str, city_info: Dict[str, Any], temp_val: float, high_temp: float, low_temp: float, weather_icon: str, weather_desc: str, wind_val: float, humidity_val: float, rain_val: float, uv_val: float, aqi_val: float) -> str:
+    """Renders the top portion of the right hero frame with zero indentation to prevent code blocks."""
+    now_str = datetime.now().strftime('%A, %B %d')
+    province = city_info.get('province', 'Pakistan')
+    elevation = city_info.get('elevation_m', 200)
+    climate = city_info.get('climate', 'Continental')
+    
+    html = f"""<div class="hero-glass-frame">
+<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
+<div style="display:flex; align-items:center; gap:8px;">
+<span style="font-size:1.1rem; color:#38bdf8;">📍</span>
+<span style="font-size:1.15rem; font-weight:700; color:#f8fafc;">
+{selected_city}, {province}, Pakistan
+</span>
+<span style="color:#64748b; font-size:0.9rem;">({now_str})</span>
+</div>
+<div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:9999px; padding:4px 14px; font-size:0.78rem; color:#94a3b8;">
+Elevation: {elevation}m • {climate}
+</div>
+</div>
+<div style="display:flex; align-items:baseline; gap:24px; flex-wrap:wrap;">
+<div class="hero-temp-title">{temp_val:.0f}°</div>
+<div style="color:#94a3b8; font-size:1.1rem; font-weight:600; font-family:'JetBrains Mono';">
+H <span style="color:#ffffff;">{high_temp:.0f}°</span> &nbsp;•&nbsp; L <span style="color:#ffffff;">{low_temp:.0f}°</span>
+</div>
+</div>
+<div class="hero-condition-text">
+<span style="font-size:2.2rem; margin-right:8px; vertical-align:middle;">{weather_icon}</span>
+<b>{weather_desc}</b>
+</div>
+<div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px;">
+<div class="stat-pill">💨 Wind: <b>{wind_val:.1f} km/h</b></div>
+<div class="stat-pill">💧 Humidity: <b>{humidity_val:.0f}%</b></div>
+<div class="stat-pill">🌧️ Precip: <b>{rain_val:.1f} mm</b></div>
+<div class="stat-pill">☀️ UV Index: <b>{uv_val:.1f}</b></div>
+<div class="stat-pill">🔘 Station Air: <b>{aqi_val:.0f} AQI</b></div>
+</div>"""
+    return html
 
 
 def plot_model_comparison_bar(leaderboard_df: pd.DataFrame) -> go.Figure:

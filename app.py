@@ -22,7 +22,9 @@ from src.dashboard.ui_components import (
     plot_cinematic_spline_curve,
     render_hourly_cards_html,
     render_city_chips_html,
-    plot_model_comparison_bar
+    plot_model_comparison_bar,
+    render_left_panel_html,
+    render_hero_header_html
 )
 from src.pipeline.feature_store import FeatureStoreManager
 from src.pipeline.model_registry import ModelRegistry
@@ -90,15 +92,13 @@ city_names = list(PAKISTAN_CITIES.keys())
 col_nav1, col_nav2, col_nav3 = st.columns([1.5, 2, 1.2])
 
 with col_nav1:
-    st.markdown("""
-    <div style="display:flex; align-items:center; gap:10px;">
-        <span style="font-size:1.8rem;">⛅</span>
-        <div>
-            <div style="font-weight:800; font-size:1.25rem; color:#ffffff; letter-spacing:-0.02em;">SkySense AI</div>
-            <div style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em;">Multi-Agent Atmospheric Core</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("""<div style="display:flex; align-items:center; gap:10px;">
+<span style="font-size:1.8rem;">⛅</span>
+<div>
+<div style="font-weight:800; font-size:1.25rem; color:#ffffff; letter-spacing:-0.02em;">SkySense AI</div>
+<div style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em;">Multi-Agent Atmospheric Core</div>
+</div>
+</div>""", unsafe_allow_html=True)
 
 with col_nav2:
     selected_city = st.selectbox(
@@ -117,12 +117,11 @@ with col_nav3:
             st.session_state["active_state"] = run_agent_pipeline(city=selected_city)
             st.toast(f"Synchronized live atmospheric telemetry for {selected_city}!", icon="🟢")
     with col_sub2:
-        st.markdown(f"""
-        <div style="text-align:right; padding-top:6px;">
-            <span style="font-size:0.75rem; color:#10b981; font-weight:700;">● LIVE TELEMETRY</span><br>
-            <span style="font-size:0.7rem; color:#64748b; font-family:'JetBrains Mono';">{datetime.now().strftime('%H:%M PKT')}</span>
-        </div>
-        """, unsafe_allow_html=True)
+        now_pkt = datetime.now().strftime('%H:%M PKT')
+        st.markdown(f"""<div style="text-align:right; padding-top:6px;">
+<span style="font-size:0.75rem; color:#10b981; font-weight:700;">● LIVE TELEMETRY</span><br>
+<span style="font-size:0.7rem; color:#64748b; font-family:'JetBrains Mono';">{now_pkt}</span>
+</div>""", unsafe_allow_html=True)
 
 
 # --- Load State for Selected City ---
@@ -163,112 +162,20 @@ col_left, col_right = st.columns([1, 2.2], gap="large")
 # LEFT COLUMN: Widget Card / Status / Major Cities (From Image 1)
 # -------------------------------------------------------------------------
 with col_left:
-    st.markdown(f"""
-    <div class="widget-glass-card">
-        <div>
-            <!-- Status Pill & Mini Wave (Matching Image 1 Left Card) -->
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-                <span style="font-size:0.8rem; color:#94a3b8; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">Air & Hazard Status</span>
-                <span style="background:{bg_col}25; border:1px solid {bg_col}; color:{bg_col}; padding:3px 10px; border-radius:9999px; font-size:0.75rem; font-weight:700;">
-                    {cat_name.upper()}
-                </span>
-            </div>
-            
-            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:18px; padding:18px; margin-bottom:20px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <div style="font-size:0.75rem; color:#94a3b8;">AQI Metric (24h Ahead)</div>
-                        <div style="font-size:2.4rem; font-weight:800; color:{bg_col}; font-family:'JetBrains Mono'; line-height:1.1;">{aqi_val:.0f}</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <span style="background:{bg_col}; color:{text_col}; padding:4px 12px; border-radius:9999px; font-size:0.75rem; font-weight:800;">
-                            {cat_name.split(' ')[0]}
-                        </span>
-                        <div style="font-size:0.7rem; color:#94a3b8; margin-top:6px;">PM2.5 / PM10 EPA</div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 3-Audience Safety Brief -->
-            <div style="margin-bottom:20px;">
-                <div style="font-size:0.8rem; color:#94a3b8; font-weight:600; text-transform:uppercase; margin-bottom:10px;">Targeted Advisories</div>
-                
-                <div style="background:rgba(59,130,246,0.1); border-left:3px solid #3b82f6; border-radius:8px; padding:10px 12px; margin-bottom:8px; font-size:0.8rem; color:#e2e8f0;">
-                    <b>👥 Public:</b> Limit peak-hour travel & seal windows during stagnant wind.
-                </div>
-                <div style="background:rgba(245,158,11,0.1); border-left:3px solid #f59e0b; border-radius:8px; padding:10px 12px; margin-bottom:8px; font-size:0.8rem; color:#e2e8f0;">
-                    <b>🫁 Sensitive:</b> Strict indoor air purification; keep rescue inhalers accessible.
-                </div>
-                <div style="background:rgba(239,68,68,0.1); border-left:3px solid #ef4444; border-radius:8px; padding:10px 12px; font-size:0.8rem; color:#e2e8f0;">
-                    <b>👷 Workers:</b> Mandatory N95 particulate PPE & 15-min shaded hydration breaks.
-                </div>
-            </div>
-            
-            <!-- Major Pakistani Cities Live Glance (Matching Image 1 Right Pill Stack) -->
-            <div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <span style="font-size:0.8rem; color:#94a3b8; font-weight:600; text-transform:uppercase;">Major Basins</span>
-                    <span style="font-size:0.75rem; color:#38bdf8;">Real-Time</span>
-                </div>
-    """, unsafe_allow_html=True)
-    
-    # Generate city comparison pills
     cities_summary = {
         "Karachi": {"temp": 27.0, "aqi": 82, "province": "Sindh Coastal"},
         "Islamabad": {"temp": 18.5, "aqi": 88, "province": "Federal Foothills"},
         "Peshawar": {"temp": 19.0, "aqi": 135, "province": "KP Valley"},
         "Quetta": {"temp": 12.0, "aqi": 65, "province": "Balochistan Plateau"}
     }
-    st.markdown(render_city_chips_html(cities_summary, selected_city), unsafe_allow_html=True)
-    
-    st.markdown("""
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(render_left_panel_html(selected_city, aqi_val, cat_name, bg_col, text_col, cities_summary), unsafe_allow_html=True)
 
 
 # -------------------------------------------------------------------------
 # RIGHT COLUMN: Main Hero Atmospheric Area & Spline Wave (Images 1, 2, 3)
 # -------------------------------------------------------------------------
 with col_right:
-    st.markdown(f"""
-    <div class="hero-glass-frame">
-        <!-- Location & Date Header (Matching Image 1 & 2) -->
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
-            <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:1.1rem; color:#38bdf8;">📍</span>
-                <span style="font-size:1.15rem; font-weight:700; color:#f8fafc;">
-                    {selected_city}, {city_info['province']}, Pakistan
-                </span>
-                <span style="color:#64748b; font-size:0.9rem;">({datetime.now().strftime('%A, %B %d')})</span>
-            </div>
-            <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:9999px; padding:4px 14px; font-size:0.78rem; color:#94a3b8;">
-                Elevation: {city_info['elevation_m']}m • {city_info['climate']}
-            </div>
-        </div>
-        
-        <!-- Big Temperature & Weather State (Matching Image 1 & 3) -->
-        <div style="display:flex; align-items:baseline; gap:24px; flex-wrap:wrap;">
-            <div class="hero-temp-title">{temp_val:.0f}°</div>
-            <div style="color:#94a3b8; font-size:1.1rem; font-weight:600; font-family:'JetBrains Mono';">
-                H <span style="color:#ffffff;">{high_temp:.0f}°</span> &nbsp;•&nbsp; L <span style="color:#ffffff;">{low_temp:.0f}°</span>
-            </div>
-        </div>
-        
-        <div class="hero-condition-text">
-            <span style="font-size:2.2rem; margin-right:8px; vertical-align:middle;">{weather_icon}</span>
-            <b>{weather_desc}</b>
-        </div>
-        
-        <!-- Quick Environmental Telemetry Bar (Matching Image 3 Bottom Bar) -->
-        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px;">
-            <div class="stat-pill">💨 Wind: <b>{wind_val:.1f} km/h</b></div>
-            <div class="stat-pill">💧 Humidity: <b>{humidity_val:.0f}%</b></div>
-            <div class="stat-pill">🌧️ Precip: <b>{rain_val:.1f} mm</b></div>
-            <div class="stat-pill">☀️ UV Index: <b>{uv_val:.1f}</b></div>
-            <div class="stat-pill">🔘 Station Air: <b>{aqi_val:.0f} AQI</b></div>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown(render_hero_header_html(selected_city, city_info, temp_val, high_temp, low_temp, weather_icon, weather_desc, wind_val, humidity_val, rain_val, uv_val, aqi_val), unsafe_allow_html=True)
     
     # Golden Spline Wave Curve (Matching Image 1 Bottom Wave)
     if not df_traj.empty:
@@ -293,9 +200,7 @@ with col_right:
     if not df_traj.empty:
         st.markdown(render_hourly_cards_html(df_traj), unsafe_allow_html=True)
         
-    st.markdown("""
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 # =========================================================================
@@ -316,11 +221,9 @@ with tech_tabs[0]:
     st.markdown(f"#### 🎙️ Live Broadcast Newsroom Script — {selected_city}")
     st.caption("Generated autonomously by the LangGraph Weather Report Agent.")
     report_text = state.get("weather_report", "Weather broadcast synthesis in progress...")
-    st.markdown(f"""
-    <div style="background: rgba(18, 24, 38, 0.7); border: 1px solid rgba(56, 189, 248, 0.3); border-left: 6px solid #38bdf8; border-radius: 18px; padding: 24px; color: #f1f5f9; font-size: 1.05rem; line-height: 1.8;">
-        {report_text}
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"""<div style="background: rgba(18, 24, 38, 0.7); border: 1px solid rgba(56, 189, 248, 0.3); border-left: 6px solid #38bdf8; border-radius: 18px; padding: 24px; color: #f1f5f9; font-size: 1.05rem; line-height: 1.8;">
+{report_text}
+</div>""", unsafe_allow_html=True)
 
 # TAB 2: Model Registry & Leaderboard
 with tech_tabs[1]:
