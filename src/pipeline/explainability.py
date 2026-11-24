@@ -88,13 +88,25 @@ class ModelExplainer:
         
         # Get background data sample from feature store for baseline expectation
         feat_df = self.fs.get_features()
-        if feat_df.empty:
+        if feat_df.empty or not feature_names:
             return {}
             
-        X_bg = feat_df[feature_names].dropna().sample(min(50, len(feat_df)), random_state=42)
-        X_sample = pd.DataFrame([sample_row[feature_names]])
-        
         try:
+            available_feats = [f for f in feature_names if f in feat_df.columns]
+            if len(available_feats) < len(feature_names):
+                feature_names = available_feats
+            if not feature_names:
+                return {}
+                
+            X_clean = feat_df[feature_names].fillna(0.0)
+            n_samples = min(50, len(X_clean))
+            if n_samples == 0:
+                return {}
+            X_bg = X_clean.sample(n_samples, random_state=42)
+            
+            sample_dict = {f: float(sample_row.get(f, 0.0)) for f in feature_names}
+            X_sample = pd.DataFrame([sample_dict]).fillna(0.0)
+            
             if hasattr(core_model, "predict") and not is_pipeline and hasattr(core_model, "feature_importances_"):
                 explainer = shap.TreeExplainer(core_model, X_bg)
                 shap_vals = explainer.shap_values(X_sample)

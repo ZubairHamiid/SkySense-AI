@@ -333,12 +333,11 @@ def plot_cinematic_spline_curve(df_trajectory: pd.DataFrame, metric: str = "temp
 
 
 def render_hourly_cards_html(df_trajectory: pd.DataFrame) -> str:
-    """Renders the horizontal row of hourly cards matching Image 2."""
+    """Renders the horizontal row of hourly cards matching Image 2. No leading whitespace to prevent markdown code blocks."""
     if df_trajectory.empty:
         return ""
         
     cards_html = []
-    # Take next 12-16 hours
     display_rows = df_trajectory.head(12)
     
     for idx, row in display_rows.iterrows():
@@ -347,28 +346,20 @@ def render_hourly_cards_html(df_trajectory: pd.DataFrame) -> str:
         aqi = float(row.get("aqi", 100.0))
         rain = float(row.get("precipitation_mm", 0.0))
         icon, _ = get_weather_icon_and_desc(temp, aqi, rain, 5.0)
-        
-        is_active = (idx == 0)
-        active_class = "active" if is_active else ""
-        
-        cards_html.append(f"""
-        <div class="hourly-pill {active_class}">
-            <div style="font-size: 0.75rem; color: #94a3b8; font-family: 'JetBrains Mono'; font-weight: 600;">{t}</div>
-            <div style="font-size: 1.5rem; margin: 6px 0;">{icon}</div>
-            <div style="font-size: 1rem; font-weight: 700; color: #ffffff;">{temp:.0f}°</div>
-            <div style="font-size: 0.68rem; color: #38bdf8; margin-top: 2px;">{rain:.1f}mm</div>
-        </div>
-        """)
-        
-    return f"""
-    <div class="hourly-scroll-container">
-        {''.join(cards_html)}
-    </div>
-    """
+        active_class = "active" if idx == 0 else ""
+        cards_html.append(
+            f'<div class="hourly-pill {active_class}">'
+            f'<div style="font-size:0.75rem;color:#94a3b8;font-family:\'JetBrains Mono\';font-weight:600;">{t}</div>'
+            f'<div style="font-size:1.5rem;margin:6px 0;">{icon}</div>'
+            f'<div style="font-size:1rem;font-weight:700;color:#ffffff;">{temp:.0f}°</div>'
+            f'<div style="font-size:0.68rem;color:#38bdf8;margin-top:2px;">{rain:.1f}mm</div>'
+            f'</div>'
+        )
+    return '<div class="hourly-scroll-container">' + "".join(cards_html) + '</div>'
 
 
 def render_city_chips_html(cities_meta: Dict[str, Dict[str, Any]], active_city: str) -> str:
-    """Renders the 'Recently Searched / Major Cities' cards on the side matching Image 1."""
+    """Renders the 'Recently Searched / Major Cities' cards on the side matching Image 1. No leading whitespace to prevent markdown code blocks."""
     chips_html = []
     
     for cname, cdata in list(cities_meta.items())[:4]:
@@ -376,24 +367,21 @@ def render_city_chips_html(cities_meta: Dict[str, Dict[str, Any]], active_city: 
         aqi = cdata.get("aqi", 110)
         icon, desc = get_weather_icon_and_desc(temp, aqi, 0.0, 5.0)
         is_active = (cname.lower() == active_city.lower())
-        border_style = "border-color: rgba(56, 189, 248, 0.6); background: rgba(56, 189, 248, 0.1);" if is_active else ""
-        
-        chips_html.append(f"""
-        <div class="city-chip-card" style="{border_style}">
-            <div style="display:flex; align-items:center; gap: 12px;">
-                <span style="font-size: 1.4rem;">{icon}</span>
-                <div>
-                    <div style="font-weight: 700; color: #ffffff; font-size: 0.95rem;">{cname}</div>
-                    <div style="font-size: 0.72rem; color: #94a3b8;">{cdata.get('province', 'Pakistan')}</div>
-                </div>
-            </div>
-            <div style="text-align: right;">
-                <div style="font-size: 1.15rem; font-weight: 800; color: #ffffff; font-family: 'JetBrains Mono';">{temp:.0f}°</div>
-                <div style="font-size: 0.7rem; color: #38bdf8;">AQI {aqi}</div>
-            </div>
-        </div>
-        """)
-        
+        border_style = "border-color:rgba(56,189,248,0.6);background:rgba(56,189,248,0.1);" if is_active else ""
+        province = cdata.get("province", "Pakistan")
+        chips_html.append(
+            f'<div class="city-chip-card" style="{border_style}">'
+            f'<div style="display:flex;align-items:center;gap:12px;">'
+            f'<span style="font-size:1.4rem;">{icon}</span>'
+            f'<div>'
+            f'<div style="font-weight:700;color:#ffffff;font-size:0.95rem;">{cname}</div>'
+            f'<div style="font-size:0.72rem;color:#94a3b8;">{province}</div>'
+            f'</div></div>'
+            f'<div style="text-align:right;">'
+            f'<div style="font-size:1.15rem;font-weight:800;color:#ffffff;font-family:\'JetBrains Mono\';">{temp:.0f}°</div>'
+            f'<div style="font-size:0.7rem;color:#38bdf8;">AQI {aqi:.0f}</div>'
+            f'</div></div>'
+        )
     return "".join(chips_html)
 
 

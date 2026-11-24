@@ -113,7 +113,15 @@ class LocalFeatureStore:
         
         # Save city-specific Parquet and combined Parquet
         city_parquet = RAW_DATA_DIR / f"raw_observations_{target_city.lower()}.parquet"
-        df.to_parquet(city_parquet, index=False)
+        if city_parquet.exists():
+            try:
+                exist_city = pd.read_parquet(city_parquet)
+                comb_city = pd.concat([exist_city, df], ignore_index=True).drop_duplicates(subset=["time"]).sort_values("time").reset_index(drop=True)
+                comb_city.to_parquet(city_parquet, index=False)
+            except Exception:
+                df.to_parquet(city_parquet, index=False)
+        else:
+            df.to_parquet(city_parquet, index=False)
         
         # Merge into global Parquet
         global_parquet = RAW_DATA_DIR / "raw_observations.parquet"
@@ -158,7 +166,15 @@ class LocalFeatureStore:
             return
         target_city = city or (df["city"].iloc[0] if "city" in df.columns else "Lahore")
         city_parquet = PROCESSED_DATA_DIR / f"engineered_features_{target_city.lower()}.parquet"
-        df.to_parquet(city_parquet, index=False)
+        if city_parquet.exists():
+            try:
+                exist_f = pd.read_parquet(city_parquet)
+                comb_f = pd.concat([exist_f, df], ignore_index=True).drop_duplicates(subset=["time"]).sort_values("time").reset_index(drop=True)
+                comb_f.to_parquet(city_parquet, index=False)
+            except Exception:
+                df.to_parquet(city_parquet, index=False)
+        else:
+            df.to_parquet(city_parquet, index=False)
         
         global_parquet = PROCESSED_DATA_DIR / "engineered_features.parquet"
         df.to_parquet(global_parquet, index=False)
@@ -188,18 +204,22 @@ class LocalFeatureStore:
             return feat_df
         return pd.DataFrame()
 
-    def get_raw_observations(self, city: Optional[str] = None) -> pd.DataFrame:
-        """Retrieves raw observations, optionally filtered by city."""
+    def get_raw_observations(self, city: Optional[str] = None, limit: Optional[int] = None) -> pd.DataFrame:
+        """Retrieves raw observations, optionally filtered by city and limit."""
         with self._get_connection() as conn:
+            limit_clause = f" LIMIT {int(limit)}" if limit else ""
+            order_clause = "DESC" if limit else "ASC"
             if city:
-                df = pd.read_sql("SELECT * FROM raw_observations WHERE LOWER(city) = ? ORDER BY time ASC", conn, params=(city.lower(),))
+                df = pd.read_sql(f"SELECT * FROM raw_observations WHERE LOWER(city) = ? ORDER BY time {order_clause}{limit_clause}", conn, params=(city.lower(),))
                 if df.empty:
                     # Fallback to general observations if specific city records are not yet filtered
-                    df = pd.read_sql("SELECT * FROM raw_observations ORDER BY time ASC", conn)
+                    df = pd.read_sql(f"SELECT * FROM raw_observations ORDER BY time {order_clause}{limit_clause}", conn)
             else:
-                df = pd.read_sql("SELECT * FROM raw_observations ORDER BY time ASC", conn)
+                df = pd.read_sql(f"SELECT * FROM raw_observations ORDER BY time {order_clause}{limit_clause}", conn)
         if not df.empty:
             df["time"] = pd.to_datetime(df["time"])
+            if limit:
+                df = df.sort_values("time").reset_index(drop=True)
         return df
 
     # --- Forecast Ledger Methods ---

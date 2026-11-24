@@ -63,25 +63,40 @@ explainer = get_model_explainer()
 def get_cached_agent_state(city: str) -> Dict[str, Any]:
     return run_agent_pipeline(city=city)
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=1800, show_spinner=False)
 def get_cached_eda_stats():
     return eda.get_summary_statistics()
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=1800, show_spinner=False)
 def get_cached_eda_outliers():
     return eda.detect_outliers_iqr()
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=1800, show_spinner=False)
 def get_cached_eda_correlation():
     return eda.get_correlation_matrix()
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=1800, show_spinner=False)
 def get_cached_eda_diurnal():
     return eda.get_diurnal_patterns()
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=1800, show_spinner=False)
 def get_cached_feature_importance(metric: str):
     return explainer.get_global_feature_importance(metric, top_n=10)
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_city_quick_stats(city: str) -> Dict[str, float]:
+    """Returns latest temp and AQI for a city directly from parquet - no agent pipeline needed."""
+    try:
+        df = fs.get_features(city=city)
+        if df.empty:
+            return {"temp": 22.0, "aqi": 100.0}
+        last = df.sort_values("time").iloc[-1]
+        return {
+            "temp": float(last.get("temperature_c", 22.0)),
+            "aqi": float(last.get("aqi", 100.0))
+        }
+    except Exception:
+        return {"temp": 22.0, "aqi": 100.0}
 
 
 # =========================================================================
@@ -92,13 +107,15 @@ city_names = list(PAKISTAN_CITIES.keys())
 col_nav1, col_nav2, col_nav3 = st.columns([1.5, 2, 1.2])
 
 with col_nav1:
-    st.markdown("""<div style="display:flex; align-items:center; gap:10px;">
-<span style="font-size:1.8rem;">⛅</span>
-<div>
-<div style="font-weight:800; font-size:1.25rem; color:#ffffff; letter-spacing:-0.02em;">SkySense AI</div>
-<div style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em;">Multi-Agent Atmospheric Core</div>
-</div>
-</div>""", unsafe_allow_html=True)
+    st.markdown(
+        '<div style="display:flex;align-items:center;gap:10px;">'
+        '<span style="font-size:1.8rem;">⛅</span>'
+        '<div>'
+        '<div style="font-weight:800;font-size:1.25rem;color:#ffffff;letter-spacing:-0.02em;">SkySense AI</div>'
+        '<div style="font-size:0.7rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">Multi-Agent Atmospheric Core</div>'
+        '</div></div>',
+        unsafe_allow_html=True
+    )
 
 with col_nav2:
     selected_city = st.selectbox(
@@ -118,16 +135,20 @@ with col_nav3:
             st.toast(f"Synchronized live atmospheric telemetry for {selected_city}!", icon="🟢")
     with col_sub2:
         now_pkt = datetime.now().strftime('%H:%M PKT')
-        st.markdown(f"""<div style="text-align:right; padding-top:6px;">
-<span style="font-size:0.75rem; color:#10b981; font-weight:700;">● LIVE TELEMETRY</span><br>
-<span style="font-size:0.7rem; color:#64748b; font-family:'JetBrains Mono';">{now_pkt}</span>
-</div>""", unsafe_allow_html=True)
+        st.markdown(
+            f'<div style="text-align:right;padding-top:6px;">'
+            f'<span style="font-size:0.75rem;color:#10b981;font-weight:700;">● LIVE TELEMETRY</span><br>'
+            f'<span style="font-size:0.7rem;color:#64748b;font-family:\'JetBrains Mono\';">{now_pkt}</span>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
 
 
 # --- Load State for Selected City ---
 if "active_state" not in st.session_state or st.session_state.get("active_city") != selected_city:
-    st.session_state["active_state"] = get_cached_agent_state(selected_city)
-    st.session_state["active_city"] = selected_city
+    with st.spinner(f"Loading atmospheric data for {selected_city}..."):
+        st.session_state["active_state"] = get_cached_agent_state(selected_city)
+        st.session_state["active_city"] = selected_city
 
 state = st.session_state.get("active_state", {})
 f24 = state.get("forecast_24h", {})
@@ -152,6 +173,23 @@ cat_name, bg_col, text_col = get_aqi_badge_color(aqi_val)
 high_temp = round(float(df_traj["temperature_c"].max()), 0) if not df_traj.empty else round(temp_val + 4, 0)
 low_temp = round(float(df_traj["temperature_c"].min()), 0) if not df_traj.empty else round(temp_val - 5, 0)
 
+# --- Live city summary: real data from city parquets (fast, no pipeline) ---
+_city_meta = {
+    "Karachi": "Sindh Coastal", "Islamabad": "Federal Foothills",
+    "Peshawar": "KP Valley", "Quetta": "Balochistan Plateau",
+    "Multan": "Punjab South", "Faisalabad": "Central Punjab",
+    "Sargodha": "Punjab Agri Belt", "Lahore": "Punjab Capital",
+}
+_sidebar_cities = [c for c in ["Karachi", "Islamabad", "Peshawar", "Quetta"] if c != selected_city][:4]
+cities_summary = {}
+for c in _sidebar_cities:
+    _stats = get_city_quick_stats(c)
+    cities_summary[c] = {
+        "temp": _stats["temp"],
+        "aqi": _stats["aqi"],
+        "province": _city_meta.get(c, "Pakistan")
+    }
+
 
 # =========================================================================
 # MAIN CINEMATIC DASHBOARD (Matching Reference Images 1, 2, 3)
@@ -162,12 +200,6 @@ col_left, col_right = st.columns([1, 2.2], gap="large")
 # LEFT COLUMN: Widget Card / Status / Major Cities (From Image 1)
 # -------------------------------------------------------------------------
 with col_left:
-    cities_summary = {
-        "Karachi": {"temp": 27.0, "aqi": 82, "province": "Sindh Coastal"},
-        "Islamabad": {"temp": 18.5, "aqi": 88, "province": "Federal Foothills"},
-        "Peshawar": {"temp": 19.0, "aqi": 135, "province": "KP Valley"},
-        "Quetta": {"temp": 12.0, "aqi": 65, "province": "Balochistan Plateau"}
-    }
     st.markdown(render_left_panel_html(selected_city, aqi_val, cat_name, bg_col, text_col, cities_summary), unsafe_allow_html=True)
 
 
@@ -196,7 +228,7 @@ with col_right:
         st.plotly_chart(fig_spline, use_container_width=True)
     
     # Horizontal Hourly Forecast Cards (Matching Image 2)
-    st.markdown("<div style='margin-top:12px; font-size:0.8rem; color:#94a3b8; font-weight:600; text-transform:uppercase;'>Hourly Progression (Next 12 Hours)</div>", unsafe_allow_html=True)
+    st.markdown('<div style="margin-top:12px;font-size:0.8rem;color:#94a3b8;font-weight:600;text-transform:uppercase;">Hourly Progression (Next 12 Hours)</div>', unsafe_allow_html=True)
     if not df_traj.empty:
         st.markdown(render_hourly_cards_html(df_traj), unsafe_allow_html=True)
         
@@ -221,9 +253,12 @@ with tech_tabs[0]:
     st.markdown(f"#### 🎙️ Live Broadcast Newsroom Script — {selected_city}")
     st.caption("Generated autonomously by the LangGraph Weather Report Agent.")
     report_text = state.get("weather_report", "Weather broadcast synthesis in progress...")
-    st.markdown(f"""<div style="background: rgba(18, 24, 38, 0.7); border: 1px solid rgba(56, 189, 248, 0.3); border-left: 6px solid #38bdf8; border-radius: 18px; padding: 24px; color: #f1f5f9; font-size: 1.05rem; line-height: 1.8;">
-{report_text}
-</div>""", unsafe_allow_html=True)
+    st.markdown(
+        f'<div style="background:rgba(18,24,38,0.7);border:1px solid rgba(56,189,248,0.3);border-left:6px solid #38bdf8;border-radius:18px;padding:24px;color:#f1f5f9;font-size:1.05rem;line-height:1.8;">'
+        f'{report_text}'
+        f'</div>',
+        unsafe_allow_html=True
+    )
 
 # TAB 2: Model Registry & Leaderboard
 with tech_tabs[1]:
@@ -262,16 +297,19 @@ with tech_tabs[2]:
     with col_x2:
         st.markdown("##### 🎯 Local Forecast Attribution (SHAP Waterfall)")
         if state and state.get("current_features"):
-            s_series = pd.Series(state["current_features"])
-            shap_info = explainer.explain_prediction_shap(exp_metric, s_series)
-            if shap_info and "top_contributors" in shap_info:
-                df_c = pd.DataFrame(shap_info["top_contributors"])
-                fig_shap = px.bar(
-                    df_c, x="SHAP_Value", y="Feature", orientation="h",
-                    color="SHAP_Value", color_continuous_scale=["#38bdf8", "#94a3b8", "#ef4444"], template="plotly_dark"
-                )
-                fig_shap.update_layout(yaxis=dict(autorange="reversed"), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(l=10, r=10, t=10, b=10), height=300)
-                st.plotly_chart(fig_shap, use_container_width=True)
+            try:
+                s_series = pd.Series(state["current_features"])
+                shap_info = explainer.explain_prediction_shap(exp_metric, s_series)
+                if shap_info and "top_contributors" in shap_info:
+                    df_c = pd.DataFrame(shap_info["top_contributors"])
+                    fig_shap = px.bar(
+                        df_c, x="SHAP_Value", y="Feature", orientation="h",
+                        color="SHAP_Value", color_continuous_scale=["#38bdf8", "#94a3b8", "#ef4444"], template="plotly_dark"
+                    )
+                    fig_shap.update_layout(yaxis=dict(autorange="reversed"), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(l=10, r=10, t=10, b=10), height=300)
+                    st.plotly_chart(fig_shap, use_container_width=True)
+            except Exception as e:
+                st.info(f"SHAP explanation unavailable: {e}")
 
 # TAB 4: EDA
 with tech_tabs[3]:
@@ -305,8 +343,9 @@ with tech_tabs[4]:
     if not drift_log_df.empty:
         st.dataframe(drift_log_df, use_container_width=True)
 
-st.markdown("""
-<div style="text-align: center; color: #64748b; font-size: 0.75rem; padding: 24px 0 10px 0;">
-    <b>SkySense AI</b> • Responsive Multi-Screen Meteorological Platform • Designed for Mobile, Tablet, Laptop, and LCD/TV Screens
-</div>
-""", unsafe_allow_html=True)
+st.markdown(
+    '<div style="text-align:center;color:#64748b;font-size:0.75rem;padding:24px 0 10px 0;">'
+    '<b>SkySense AI</b> • Responsive Multi-Screen Meteorological Platform • Designed for Mobile, Tablet, Laptop, and LCD/TV Screens'
+    '</div>',
+    unsafe_allow_html=True
+)

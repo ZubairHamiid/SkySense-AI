@@ -22,10 +22,10 @@ class EDAManager:
         self.fs = FeatureStoreManager()
         
     def get_eda_dataframe(self) -> pd.DataFrame:
-        df = self.fs.get_raw_observations()
+        # Use Lahore parquet (fastest, representative dataset) instead of full 140K SQLite scan
+        df = self.fs.get_features(city="Lahore")
         if df.empty:
-            feat_df = self.fs.get_features()
-            return feat_df
+            df = self.fs.get_features()
         return df
 
     def get_summary_statistics(self) -> pd.DataFrame:

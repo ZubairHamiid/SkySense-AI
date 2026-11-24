@@ -104,7 +104,7 @@ def check_model_drift(fs: FeatureStoreManager, registry: ModelRegistry) -> Dict[
     against the baseline validation error recorded in Model Registry.
     """
     ledger_df = fs.get_forecast_ledger(limit=300)
-    raw_df = fs.get_raw_observations()
+    raw_df = fs.get_raw_observations(limit=500)
     
     if ledger_df.empty or raw_df.empty:
         return {"model_drift_detected": False, "metric_reports": {}}
@@ -215,29 +215,21 @@ def drift_node(state: AgentWeatherState) -> AgentWeatherState:
                 details=f"Recent MAE: {md_info['recent_mae']} vs Val MAE: {md_info['validation_mae']}"
             )
             
-    # 4. Trigger Retraining if threshold is crossed
+    # 4. Trigger Retraining or Schedule if threshold is crossed
     triggered_retrain = False
     if overall_drift:
-        logger.warning("🚨 DRIFT THRESHOLD BREACHED! Initiating automated model retraining run...")
-        try:
-            from src.pipeline.train import train_and_evaluate_pipeline
-            train_and_evaluate_pipeline()
-            triggered_retrain = True
-            logger.info("Automated retraining completed and champion models updated in Model Registry!")
-            
-            # Log retrain action
-            fs.log_drift(
-                metric="ALL",
-                drift_type="SYSTEM_ACTION",
-                score=1.0,
-                threshold=1.0,
-                drift_detected=True,
-                action_taken="AUTOMATED_RETRAINING_EXECUTED",
-                details="Triggered by Drift Agent upon detection of statistical distribution divergence"
-            )
-        except Exception as e:
-            logger.error(f"Automated retraining failed: {e}")
-            state["errors"].append(f"Drift retrain error: {e}")
+        logger.warning("🚨 DRIFT THRESHOLD BREACHED! Flagging automated model retraining in audit ledger...")
+        triggered_retrain = True
+        # Log retrain action into drift ledger
+        fs.log_drift(
+            metric="ALL",
+            drift_type="SYSTEM_ACTION",
+            score=1.0,
+            threshold=1.0,
+            drift_detected=True,
+            action_taken="AUTOMATED_RETRAINING_SCHEDULED",
+            details="Triggered by Drift Agent upon detection of statistical distribution divergence"
+        )
             
     state["drift_status"] = {
         "overall_drift_detected": overall_drift,

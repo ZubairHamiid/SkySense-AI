@@ -37,8 +37,8 @@ class FeatureStoreManager:
     def get_features(self, city: Optional[str] = None) -> pd.DataFrame:
         return self.local.get_features(city=city)
 
-    def get_raw_observations(self, city: Optional[str] = None) -> pd.DataFrame:
-        return self.local.get_raw_observations(city=city)
+    def get_raw_observations(self, city: Optional[str] = None, limit: Optional[int] = None) -> pd.DataFrame:
+        return self.local.get_raw_observations(city=city, limit=limit)
 
     # Ledger and logging proxies
     def log_forecast(self, *args, **kwargs):
