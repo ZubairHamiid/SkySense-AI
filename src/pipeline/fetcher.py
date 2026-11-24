@@ -10,6 +10,7 @@ from config.settings import (
     CITY_LONGITUDE,
     CITY_TIMEZONE,
     DEFAULT_CITY,
+    PAKISTAN_CITIES,
     OPENWEATHER_API_KEY,
     AQICN_API_KEY
 )
@@ -49,12 +50,21 @@ class DataFetcher:
     """
     Fetches weather and pollutant data from multiple sources (Open-Meteo, OpenWeather, AQICN),
     fuses & time-aligns them, and applies a documented imputation strategy.
+    Supports dynamic multi-city resolution across Pakistan.
     """
     
-    def __init__(self, lat: float = CITY_LATITUDE, lon: float = CITY_LONGITUDE, city: str = DEFAULT_CITY):
-        self.lat = lat
-        self.lon = lon
+    def __init__(self, city: str = DEFAULT_CITY, lat: Optional[float] = None, lon: Optional[float] = None):
         self.city = city
+        if lat is not None and lon is not None:
+            self.lat = lat
+            self.lon = lon
+        elif city in PAKISTAN_CITIES:
+            self.lat = PAKISTAN_CITIES[city]["lat"]
+            self.lon = PAKISTAN_CITIES[city]["lon"]
+        else:
+            self.lat = CITY_LATITUDE
+            self.lon = CITY_LONGITUDE
+        logger.info(f"DataFetcher initialized for [{self.city}] at Coords ({self.lat:.4f}, {self.lon:.4f})")
         
     def fetch_open_meteo_historical(self, start_date: str, end_date: str) -> pd.DataFrame:
         """

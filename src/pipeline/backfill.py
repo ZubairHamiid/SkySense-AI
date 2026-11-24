@@ -45,19 +45,21 @@ def run_backfill(days: int = 180, city: str = DEFAULT_CITY) -> pd.DataFrame:
         logger.warning(f"Live fetch during backfill encountered warning: {e}. Using historical data.")
         combined = df_raw
         
-    logger.info(f"Total raw observations collected: {len(combined)} rows.")
-    fs.save_raw_observations(combined)
+    logger.info(f"Total raw observations collected for {city}: {len(combined)} rows.")
+    fs.save_raw_observations(combined, city=city)
     
     # 3. Compute Features and 24h Ahead Targets
     logger.info("Computing time-based, lag, and derived features...")
     df_features = compute_features(combined, is_training=True)
+    if "city" not in df_features.columns:
+        df_features["city"] = city
     
     # Check newest 24h targets
     tail_targets = df_features[f"target_{METRICS[0]}"].tail(FORECAST_HORIZON_HOURS)
     logger.info(f"Target check: Newest {FORECAST_HORIZON_HOURS} hours target null count = {tail_targets.isna().sum()} (Expected {FORECAST_HORIZON_HOURS})")
     
     # 4. Save to Feature Store
-    fs.save_features(df_features)
+    fs.save_features(df_features, city=city)
     logger.info(f"Successfully saved {len(df_features)} feature rows to Feature Store!")
     logger.info(f"Feature set contains {len(df_features.columns)} total columns.")
     return df_features

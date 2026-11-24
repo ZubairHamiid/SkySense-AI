@@ -25,10 +25,25 @@ def forecast_node(state: AgentWeatherState) -> AgentWeatherState:
     registry = ModelRegistry()
     city = state.get("city", DEFAULT_CITY)
     
-    # 1. Fetch latest feature record
-    feat_df = fs.get_features()
+    # 1. Fetch latest feature record for target city
+    feat_df = fs.get_features(city=city)
+    if feat_df.empty or ("city" in feat_df.columns and city.lower() not in feat_df["city"].str.lower().values):
+        logger.info(f"Target city [{city}] features not pre-cached. Ingesting live atmospheric observations for {city}...")
+        try:
+            from src.pipeline.fetcher import DataFetcher
+            from src.pipeline.feature_engineering import compute_features
+            fetcher = DataFetcher(city=city)
+            df_live = fetcher.fetch_live_recent(past_hours=48, forecast_hours=24)
+            feat_df = compute_features(df_live, is_training=False)
+            fs.save_raw_observations(df_live, city=city)
+            fs.save_features(feat_df, city=city)
+            logger.info(f"Live features successfully computed for [{city}].")
+        except Exception as e:
+            logger.warning(f"Live fetch for [{city}] failed: {e}. Falling back to default features.")
+            feat_df = fs.get_features()
+
     if feat_df.empty:
-        err = "Feature store empty. Cannot run forecast agent."
+        err = f"Feature store empty for {city}. Cannot run forecast agent."
         logger.error(err)
         state["errors"].append(err)
         return state

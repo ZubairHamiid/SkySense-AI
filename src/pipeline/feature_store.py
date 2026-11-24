@@ -18,27 +18,27 @@ class FeatureStoreManager:
         self.local = LocalFeatureStore()
         self.hopsworks = HopsworksFeatureStore()
         
-    def save_raw_observations(self, df: pd.DataFrame):
-        self.local.save_raw_observations(df)
+    def save_raw_observations(self, df: pd.DataFrame, city: Optional[str] = None):
+        self.local.save_raw_observations(df, city=city)
         if self.hopsworks.is_configured():
             try:
                 self.hopsworks.sync_features(df, feature_group_name="raw_weather_observations")
             except Exception as e:
                 logger.warning(f"Hopsworks raw sync skipped: {e}")
 
-    def save_features(self, df: pd.DataFrame):
-        self.local.save_features(df)
+    def save_features(self, df: pd.DataFrame, city: Optional[str] = None):
+        self.local.save_features(df, city=city)
         if self.hopsworks.is_configured():
             try:
                 self.hopsworks.sync_features(df, feature_group_name="weather_features")
             except Exception as e:
                 logger.warning(f"Hopsworks feature sync skipped: {e}")
 
-    def get_features(self) -> pd.DataFrame:
-        return self.local.get_features()
+    def get_features(self, city: Optional[str] = None) -> pd.DataFrame:
+        return self.local.get_features(city=city)
 
-    def get_raw_observations(self) -> pd.DataFrame:
-        return self.local.get_raw_observations()
+    def get_raw_observations(self, city: Optional[str] = None) -> pd.DataFrame:
+        return self.local.get_raw_observations(city=city)
 
     # Ledger and logging proxies
     def log_forecast(self, *args, **kwargs):

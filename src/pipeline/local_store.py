@@ -98,17 +98,38 @@ class LocalFeatureStore:
             """)
             conn.commit()
             
-    def save_raw_observations(self, df: pd.DataFrame):
-        """Saves raw hourly observations into SQLite and Parquet."""
+    def save_raw_observations(self, df: pd.DataFrame, city: Optional[str] = None):
+        """Saves raw hourly observations into SQLite and Parquet with multi-city partitioning."""
         if df.empty:
             return
             
         df_save = df.copy()
         df_save["time"] = df_save["time"].astype(str)
+        if city and "city" not in df_save.columns:
+            df_save["city"] = city
+            
+        # Determine city target
+        target_city = city or (df_save["city"].iloc[0] if "city" in df_save.columns else "Lahore")
         
-        # Save to Parquet
-        parquet_file = RAW_DATA_DIR / "raw_observations.parquet"
-        df.to_parquet(parquet_file, index=False)
+        # Save city-specific Parquet and combined Parquet
+        city_parquet = RAW_DATA_DIR / f"raw_observations_{target_city.lower()}.parquet"
+        df.to_parquet(city_parquet, index=False)
+        
+        # Merge into global Parquet
+        global_parquet = RAW_DATA_DIR / "raw_observations.parquet"
+        if global_parquet.exists():
+            try:
+                existing_df = pd.read_parquet(global_parquet)
+                combined_df = pd.concat([existing_df, df], ignore_index=True)
+                if "city" in combined_df.columns:
+                    combined_df = combined_df.drop_duplicates(subset=["time", "city"]).sort_values("time").reset_index(drop=True)
+                else:
+                    combined_df = combined_df.drop_duplicates(subset=["time"]).sort_values("time").reset_index(drop=True)
+                combined_df.to_parquet(global_parquet, index=False)
+            except Exception:
+                df.to_parquet(global_parquet, index=False)
+        else:
+            df.to_parquet(global_parquet, index=False)
         
         with self._get_connection() as conn:
             cols = [
@@ -129,34 +150,54 @@ class LocalFeatureStore:
             data_tuples = [tuple(r.get(c, None) for c in avail_cols) for r in records]
             conn.executemany(query, data_tuples)
             conn.commit()
-        logger.info(f"Saved {len(df)} raw observations to Local Feature Store.")
+        logger.info(f"Saved {len(df)} raw observations for [{target_city}] to Local Feature Store.")
 
-    def save_features(self, df: pd.DataFrame):
+    def save_features(self, df: pd.DataFrame, city: Optional[str] = None):
         """Saves processed feature table into Parquet."""
         if df.empty:
             return
-        parquet_path = PROCESSED_DATA_DIR / "engineered_features.parquet"
-        df.to_parquet(parquet_path, index=False)
-        logger.info(f"Saved {len(df)} engineered feature rows to {parquet_path}")
+        target_city = city or (df["city"].iloc[0] if "city" in df.columns else "Lahore")
+        city_parquet = PROCESSED_DATA_DIR / f"engineered_features_{target_city.lower()}.parquet"
+        df.to_parquet(city_parquet, index=False)
         
-    def get_features(self) -> pd.DataFrame:
-        """Retrieves engineered features from storage."""
+        global_parquet = PROCESSED_DATA_DIR / "engineered_features.parquet"
+        df.to_parquet(global_parquet, index=False)
+        logger.info(f"Saved {len(df)} engineered feature rows for [{target_city}] to {city_parquet}")
+        
+    def get_features(self, city: Optional[str] = None) -> pd.DataFrame:
+        """Retrieves engineered features from storage for a specified city or all."""
+        if city:
+            city_parquet = PROCESSED_DATA_DIR / f"engineered_features_{city.lower()}.parquet"
+            if city_parquet.exists():
+                return pd.read_parquet(city_parquet)
+                
         parquet_path = PROCESSED_DATA_DIR / "engineered_features.parquet"
         if parquet_path.exists():
-            return pd.read_parquet(parquet_path)
+            df = pd.read_parquet(parquet_path)
+            if city and "city" in df.columns:
+                df_city = df[df["city"].str.lower() == city.lower()]
+                if not df_city.empty:
+                    return df_city
+            return df
             
-        raw_df = self.get_raw_observations()
+        raw_df = self.get_raw_observations(city=city)
         if not raw_df.empty:
             from src.pipeline.feature_engineering import compute_features
             feat_df = compute_features(raw_df, is_training=True)
-            self.save_features(feat_df)
+            self.save_features(feat_df, city=city)
             return feat_df
         return pd.DataFrame()
 
-    def get_raw_observations(self) -> pd.DataFrame:
-        """Retrieves raw observations."""
+    def get_raw_observations(self, city: Optional[str] = None) -> pd.DataFrame:
+        """Retrieves raw observations, optionally filtered by city."""
         with self._get_connection() as conn:
-            df = pd.read_sql("SELECT * FROM raw_observations ORDER BY time ASC", conn)
+            if city:
+                df = pd.read_sql("SELECT * FROM raw_observations WHERE LOWER(city) = ? ORDER BY time ASC", conn, params=(city.lower(),))
+                if df.empty:
+                    # Fallback to general observations if specific city records are not yet filtered
+                    df = pd.read_sql("SELECT * FROM raw_observations ORDER BY time ASC", conn)
+            else:
+                df = pd.read_sql("SELECT * FROM raw_observations ORDER BY time ASC", conn)
         if not df.empty:
             df["time"] = pd.to_datetime(df["time"])
         return df
