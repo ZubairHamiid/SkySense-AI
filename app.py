@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional
 
 # Set page configuration for full responsiveness
@@ -148,7 +148,7 @@ with col_nav3:
             st.session_state["active_state"] = run_agent_pipeline(city=selected_city, allow_retrain=False)
             st.toast(f"Synchronized live telemetry for {selected_city}.")
     with col_sub2:
-        now_pkt = datetime.now().strftime('%H:%M PKT')
+        now_pkt = datetime.now(timezone(timedelta(hours=5))).strftime('%H:%M PKT')
         st.markdown(
             f'<div style="text-align:right;padding-top:6px;">'
             f'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10b981;margin-right:6px;vertical-align:middle;"></span>'

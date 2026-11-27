@@ -4,7 +4,7 @@ import plotly.express as px
 import pandas as pd
 import numpy as np
 import textwrap
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Tuple
 
 
@@ -244,17 +244,73 @@ def inject_cinematic_theme_css():
         .hero-glass-frame { padding: 42px 48px; border-radius: 36px; }
     }
     
-    /* Streamlit Components Dark Override */
+    /* Streamlit Components Dark Override (Enforced even on Light-mode browsers) */
+    header[data-testid="stHeader"] {
+        background: rgba(8, 11, 17, 0.75) !important;
+        backdrop-filter: blur(12px) !important;
+    }
     .stSelectbox label, .stSlider label {
         color: #94a3b8 !important;
         font-weight: 600;
     }
+    .stSelectbox [data-baseweb="select"] > div {
+        background-color: rgba(18, 24, 38, 0.85) !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
+        color: #f8fafc !important;
+        border-radius: 12px !important;
+    }
+    .stSelectbox [data-baseweb="select"] span,
+    .stSelectbox [data-baseweb="select"] svg {
+        color: #f8fafc !important;
+        fill: #f8fafc !important;
+    }
+    .stButton > button {
+        background-color: rgba(18, 24, 38, 0.85) !important;
+        color: #f8fafc !important;
+        border: 1px solid rgba(56, 189, 248, 0.35) !important;
+        border-radius: 12px !important;
+        font-weight: 600 !important;
+        transition: all 0.2s ease !important;
+    }
+    .stButton > button:hover {
+        background-color: rgba(56, 189, 248, 0.18) !important;
+        border-color: #38bdf8 !important;
+        color: #ffffff !important;
+    }
+    [data-testid="stMetric"] {
+        background: rgba(18, 24, 38, 0.65) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        border-radius: 14px !important;
+        padding: 14px 16px !important;
+    }
+    [data-testid="stMetricLabel"] p,
+    [data-testid="stMetricLabel"] {
+        color: #94a3b8 !important;
+        font-weight: 600 !important;
+    }
+    [data-testid="stMetricValue"],
+    [data-testid="stMetricValue"] > div {
+        color: #f8fafc !important;
+        font-weight: 700 !important;
+    }
+    [data-testid="stExpander"] {
+        background-color: rgba(18, 24, 38, 0.72) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border-radius: 14px !important;
+    }
+    [data-testid="stExpander"] summary,
+    [data-testid="stExpander"] summary p,
+    [data-testid="stExpander"] summary svg {
+        background-color: rgba(18, 24, 38, 0.9) !important;
+        color: #f8fafc !important;
+        fill: #f8fafc !important;
+    }
     .stTabs [data-baseweb="tab-list"] {
         gap: 6px;
-        background-color: rgba(15, 23, 42, 0.65);
+        background-color: rgba(15, 23, 42, 0.75);
         border-radius: 14px;
         padding: 5px;
-        border: 1px solid rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         overflow-x: auto;
         flex-wrap: nowrap;
         scrollbar-width: none;
@@ -264,13 +320,16 @@ def inject_cinematic_theme_css():
     }
     .stTabs [data-baseweb="tab"] {
         border-radius: 10px;
-        color: #94a3b8;
+        color: #cbd5e1 !important;
         padding: 10px 16px;
         font-weight: 600;
         white-space: nowrap;
     }
+    .stTabs [data-baseweb="tab"] p {
+        color: inherit !important;
+    }
     .stTabs [aria-selected="true"] {
-        background-color: rgba(255, 255, 255, 0.12) !important;
+        background-color: rgba(56, 189, 248, 0.16) !important;
         color: #ffffff !important;
     }
     </style>
@@ -588,7 +647,7 @@ def render_hero_header_html(
     rain_prob_pct: float = 0.0,
 ) -> str:
     """Renders the top portion of the right hero frame with zero indentation to prevent code blocks."""
-    now_str = datetime.now().strftime('%A, %B %d')
+    now_str = datetime.now(timezone(timedelta(hours=5))).strftime('%A, %B %d')
     province = city_info.get('province', 'Pakistan')
     elevation = city_info.get('elevation_m', 200)
     climate = city_info.get('climate', 'Continental')
