@@ -122,7 +122,7 @@ Orchestrated as a single four-node `StateGraph` in [graph.py](src/agents/graph.p
    - **Autonomous Retraining**: Logs every drift check to `drift_log`; when breached, fires GitHub Actions `repository_dispatch` (`drift_alert_retrain`) or runs `train_and_evaluate_pipeline()` directly in CLI/CI mode (`allow_retrain=True`) while staying non-blocking in the live web dashboard.
 
 ### LLM Client Reliability & Failure Auditing
-[llm_client.py](src/agents/llm_client.py) wraps Groq (`llama-3.3-70b-versatile`) with millisecond latency tracking, 3-second timeout guard, and deterministic meteorological template fallbacks. Every call (whether `SUCCESS`, `FALLBACK_USED`, or `FAILED_API_ERROR`) is persisted in `agent_call_log`, and failed calls are surfaced in the dashboard's **Failed Agent Calls Audit Log**.
+[llm_client.py](src/agents/llm_client.py) wraps Groq (`openai/gpt-oss-20b`, `reasoning_effort="low"`, `max_tokens=2048`) with millisecond latency tracking, 12-second timeout guard, empty-payload detection, and deterministic meteorological template fallbacks. Live verification logged `AlertAgent` (`1,361 ms`, `SUCCESS`, 2,919 chars) and `WeatherReportAgent` (`1,559 ms`, `SUCCESS`, 3,594 chars). Every call (`SUCCESS`, `FALLBACK_USED`, or `FAILED_API_ERROR`) is persisted in `agent_call_log`, and failed calls are surfaced in the dashboard's **Failed Agent Calls Audit Log**.
 
 ---
 
@@ -143,7 +143,7 @@ Orchestrated as a single four-node `StateGraph` in [graph.py](src/agents/graph.p
 
 - **Hourly Ingestion & Agents**: [.github/workflows/feature_ingestion.yml](.github/workflows/feature_ingestion.yml) (`cron: '0 * * * *'`, passes `GITHUB_TOKEN` for drift dispatch).
 - **Daily & Drift-Triggered Training**: [.github/workflows/training_pipeline.yml](.github/workflows/training_pipeline.yml) (`cron: '0 0 * * *'` + `repository_dispatch: [drift_alert_retrain]`).
-- **Dual Feature Store & Model Registry**: Local SQLite/Parquet zero-config engine + **Hopsworks Cloud Feature Store & Model Registry** ([hopsworks_store.py](src/pipeline/hopsworks_store.py)) activated automatically when `HOPSWORKS_API_KEY` is provided.
+- **Dual Feature Store & Model Registry**: Local SQLite/Parquet zero-config engine + **Hopsworks Cloud Feature Store & Model Registry** (Project: `skysense` — all 6 champion models uploaded and Feature Group `skysense_weather_features` provisioned via [hopsworks_store.py](src/pipeline/hopsworks_store.py)).
 - **Dashboard Deployment (Streamlit Community Cloud)**:
   - Repository: `https://github.com/ZubairHamiid/SkySense-AI`
   - Entry point: `app.py`
