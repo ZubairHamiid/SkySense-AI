@@ -118,9 +118,13 @@ streamlit run app.py
 
 ---
 
-## 🌐 Deploying on Streamlit Community Cloud (Free Public URL)
+## 🌐 Live Deployed Dashboard
 
+- **Public App URL:** https://skysense-ai.streamlit.app
+- **GitHub Repository:** https://github.com/ZubairHamiid/SkySense-AI
+
+### Redeploy / Self-Host on Streamlit Community Cloud
 1. Go to [share.streamlit.io](https://share.streamlit.io/) and sign in with GitHub.
 2. Click **New app** → Select `ZubairHamiid/SkySense-AI` → Branch `main` → Main file path `app.py`.
 3. (Optional) Under **Advanced settings → Secrets**, add `GROQ_API_KEY`, `HOPSWORKS_API_KEY`, `OPENWEATHER_API_KEY`, `AQICN_API_KEY`.
-4. Click **Deploy** — copy your public `https://<app-name>.streamlit.app` URL into this README and `REPORT.md` for final submission!
+4. Click **Deploy**.

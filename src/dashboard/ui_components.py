@@ -221,13 +221,21 @@ def inject_cinematic_theme_css():
         letter-spacing: 0.02em;
     }
     
-    /* Responsive Media Queries */
-    @media (max-width: 600px) {
-        .hero-temp-title { font-size: 3.8rem; }
-        .hero-condition-text { font-size: 1.6rem; }
-        .hero-glass-frame { padding: 20px 16px; border-radius: 20px; }
-        .widget-glass-card { padding: 16px; border-radius: 18px; }
-        .cinematic-topbar { padding: 12px 16px; }
+    /* Responsive Media Queries (Mobile, Tablet, Laptop, Wide LCD/TV) */
+    @media (max-width: 640px) {
+        .block-container {
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
+            padding-top: 1.25rem !important;
+        }
+        .hero-temp-title { font-size: 3.4rem; }
+        .hero-condition-text { font-size: 1.25rem; margin: 10px 0 14px 0; }
+        .hero-glass-frame { padding: 18px 14px; border-radius: 18px; margin-bottom: 16px; }
+        .widget-glass-card { padding: 16px 14px; border-radius: 18px; }
+        .cinematic-topbar { padding: 10px 14px; }
+        .stat-pill { font-size: 0.74rem; padding: 5px 10px; gap: 6px; }
+        .hourly-pill { min-width: 72px; padding: 10px 8px; border-radius: 14px; }
+        .stTabs [data-baseweb="tab"] { padding: 8px 12px !important; font-size: 0.8rem !important; white-space: nowrap !important; }
     }
     
     @media (min-width: 1920px) {
@@ -242,17 +250,24 @@ def inject_cinematic_theme_css():
         font-weight: 600;
     }
     .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background-color: rgba(15, 23, 42, 0.6);
-        border-radius: 16px;
-        padding: 6px;
+        gap: 6px;
+        background-color: rgba(15, 23, 42, 0.65);
+        border-radius: 14px;
+        padding: 5px;
         border: 1px solid rgba(255, 255, 255, 0.06);
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        scrollbar-width: none;
+    }
+    .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {
+        display: none;
     }
     .stTabs [data-baseweb="tab"] {
-        border-radius: 12px;
+        border-radius: 10px;
         color: #94a3b8;
-        padding: 10px 18px;
+        padding: 10px 16px;
         font-weight: 600;
+        white-space: nowrap;
     }
     .stTabs [aria-selected="true"] {
         background-color: rgba(255, 255, 255, 0.12) !important;
@@ -264,8 +279,10 @@ def inject_cinematic_theme_css():
 
 def plot_cinematic_spline_curve(df_trajectory: pd.DataFrame, metric: str = "temperature_c", title_prefix: str = "24-Hour Horizon") -> go.Figure:
     """
-    Renders the exact glowing, smooth spline wave temperature/AQI curve shown in Image 1 & Image 3.
-    Features: smooth golden/cyan glowing spline line, luminous point highlight, and transparent background.
+    Renders a clean, full-width responsive spline wave curve with zero mobile congestion:
+    - No side legend squeezing the plot on narrow mobile screens
+    - Automatic top headroom so peak point labels never clip
+    - 5 evenly spaced milestone markers and horizontal x-axis ticks
     """
     if df_trajectory.empty or metric not in df_trajectory.columns:
         return go.Figure()
@@ -275,60 +292,76 @@ def plot_cinematic_spline_curve(df_trajectory: pd.DataFrame, metric: str = "temp
     df_plot["time_label"] = df_plot["time_dt"].dt.strftime("%H:00")
     
     metric_labels = {
-        "temperature_c": ("Temperature", "°C", "#f59e0b", "rgba(245, 158, 11, 0.25)"),
-        "aqi": ("Air Quality Index", "AQI", "#f97316", "rgba(249, 115, 22, 0.25)"),
-        "precipitation_mm": ("Precipitation", "mm", "#38bdf8", "rgba(56, 189, 248, 0.25)"),
-        "humidity_pct": ("Humidity", "%", "#06b6d4", "rgba(6, 182, 212, 0.25)"),
-        "uv_index": ("UV Radiation", "UV", "#eab308", "rgba(234, 179, 8, 0.25)"),
-        "wind_speed_kmh": ("Wind Velocity", "km/h", "#10b981", "rgba(16, 185, 129, 0.25)")
+        "temperature_c": ("Temperature", "°C", "#f59e0b", "rgba(245, 158, 11, 0.22)"),
+        "aqi": ("Air Quality Index", "AQI", "#f97316", "rgba(249, 115, 22, 0.22)"),
+        "precipitation_mm": ("Precipitation", "mm", "#38bdf8", "rgba(56, 189, 248, 0.22)"),
+        "humidity_pct": ("Humidity", "%", "#06b6d4", "rgba(6, 182, 212, 0.22)"),
+        "uv_index": ("UV Index", "UV", "#eab308", "rgba(234, 179, 8, 0.22)"),
+        "wind_speed_kmh": ("Wind Velocity", "km/h", "#10b981", "rgba(16, 185, 129, 0.22)")
     }
     
     name_str, unit, line_color, fill_color = metric_labels.get(
         metric, (metric.capitalize(), "", "#38bdf8", "rgba(56, 189, 248, 0.2)")
     )
     
+    y_vals = df_plot[metric].astype(float)
+    y_min = float(y_vals.min())
+    y_max = float(y_vals.max())
+    y_span = max(y_max - y_min, 1.0)
+    y_lower = max(0.0, y_min - y_span * 0.2) if metric != "temperature_c" else (y_min - y_span * 0.25)
+    y_upper = y_max + y_span * 0.35
+
     fig = go.Figure()
     
-    # 1. Glowing Smooth Spline Wave Area Fill (Matching Image 1 & Image 3)
+    # 1. Smooth Spline Wave Area Fill (full width, no legend squeeze)
     fig.add_trace(go.Scatter(
         x=df_plot["time_label"],
-        y=df_plot[metric],
+        y=y_vals,
         mode="lines",
         name=f"24h {name_str}",
-        line=dict(color=line_color, width=3.5, shape="spline", smoothing=1.3),
+        showlegend=False,
+        line=dict(color=line_color, width=3, shape="spline", smoothing=1.3),
         fill="tozeroy",
         fillcolor=fill_color,
         hovertemplate=f"<b>Time:</b> %{{x}}<br><b>{name_str}:</b> %{{y:.1f}} {unit}<extra></extra>"
     ))
     
-    # 2. Glowing Milestone Markers
-    step_indices = [0, 4, 8, 12, 16, 20, len(df_plot)-1]
-    step_indices = [i for i in step_indices if i < len(df_plot)]
+    # 2. Well-spaced milestone markers (5 points so labels never collide on mobile)
+    n_pts = len(df_plot)
+    step_indices = sorted(set([0, n_pts // 4, n_pts // 2, (3 * n_pts) // 4, n_pts - 1]))
+    step_indices = [i for i in step_indices if 0 <= i < n_pts]
     
     fig.add_trace(go.Scatter(
         x=df_plot["time_label"].iloc[step_indices],
-        y=df_plot[metric].iloc[step_indices],
+        y=y_vals.iloc[step_indices],
         mode="markers+text",
-        text=[f"{val:.0f}{unit}" for val in df_plot[metric].iloc[step_indices]],
+        text=[f"{val:.0f}{unit}" if unit in ("°C", "%") else f"{val:.1f}" for val in y_vals.iloc[step_indices]],
         textposition="top center",
-        textfont=dict(color="#ffffff", size=11, family="Plus Jakarta Sans"),
+        textfont=dict(color="#f8fafc", size=11, family="Plus Jakarta Sans"),
         marker=dict(
-            size=9,
+            size=8,
             color="#ffffff",
-            line=dict(color=line_color, width=3)
+            line=dict(color=line_color, width=2.5)
         ),
         showlegend=False,
         hoverinfo="skip"
     ))
     
     fig.update_layout(
-        title=f"<b>{title_prefix} — {name_str} Dynamics Wave</b>",
-        title_font=dict(size=14, color="#cbd5e1", family="Plus Jakarta Sans"),
+        title=dict(
+            text=f"<b>{title_prefix} — {name_str} (24h)</b>",
+            x=0.0,
+            xanchor="left",
+            font=dict(size=13, color="#cbd5e1", family="Plus Jakarta Sans")
+        ),
+        showlegend=False,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         xaxis=dict(
             showgrid=False,
             zeroline=False,
+            nticks=6,
+            tickangle=0,
             color="#64748b",
             tickfont=dict(family="JetBrains Mono", size=10, color="#94a3b8")
         ),
@@ -336,12 +369,14 @@ def plot_cinematic_spline_curve(df_trajectory: pd.DataFrame, metric: str = "temp
             showgrid=True,
             gridcolor="rgba(255, 255, 255, 0.05)",
             zeroline=False,
+            range=[y_lower, y_upper],
+            nticks=5,
             color="#64748b",
             tickfont=dict(family="JetBrains Mono", size=10, color="#94a3b8"),
-            ticksuffix=f" {unit}"
+            ticksuffix=f" {unit}" if unit in ("°C", "%") else ""
         ),
-        margin=dict(l=10, r=10, t=40, b=20),
-        height=260,
+        margin=dict(l=8, r=12, t=42, b=28),
+        height=250,
         hovermode="x unified"
     )
     return fig
@@ -623,10 +658,11 @@ def plot_model_comparison_bar(leaderboard_df: pd.DataFrame) -> go.Figure:
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(15, 23, 42, 0.4)",
-        margin=dict(l=20, r=20, t=40, b=20),
+        margin=dict(l=10, r=10, t=42, b=50),
         height=320,
         xaxis_title="Atmospheric Metric",
-        yaxis_title="Validation RMSE"
+        yaxis_title="Validation RMSE",
+        legend=dict(orientation="h", yanchor="bottom", y=-0.32, xanchor="center", x=0.5, title_text="")
     )
     return fig
 

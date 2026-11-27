@@ -147,4 +147,4 @@ Orchestrated as a single four-node `StateGraph` in [graph.py](src/agents/graph.p
 - **Dashboard Deployment (Streamlit Community Cloud)**:
   - Repository: `https://github.com/ZubairHamiid/SkySense-AI`
   - Entry point: `app.py`
-  - Live URL: *(Deploy at [share.streamlit.io](https://share.streamlit.io) and paste live URL here)*
+  - **Live Public Dashboard URL**: https://skysense-ai.streamlit.app

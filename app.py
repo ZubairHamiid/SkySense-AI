@@ -249,7 +249,7 @@ with col_right:
             key="spline_selector"
         )
         fig_spline = plot_cinematic_spline_curve(df_traj, metric=metric_choice, title_prefix=selected_city)
-        st.plotly_chart(fig_spline, use_container_width=True)
+        st.plotly_chart(fig_spline, use_container_width=True, config={"displayModeBar": False})
 
     st.markdown('<div style="margin-top:12px;font-size:0.78rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Hourly Progression (Next 12 Hours)</div>', unsafe_allow_html=True)
     if not df_traj.empty:
@@ -331,7 +331,7 @@ with tech_tabs[2]:
     leaderboard_df = registry.get_leaderboard()
     if not leaderboard_df.empty:
         try:
-            st.plotly_chart(plot_model_comparison_bar(leaderboard_df), use_container_width=True)
+            st.plotly_chart(plot_model_comparison_bar(leaderboard_df), use_container_width=True, config={"displayModeBar": False})
         except Exception:
             pass
         st.dataframe(
@@ -417,8 +417,12 @@ with tech_tabs[4]:
         diurnal_df = get_cached_eda_diurnal()
         if not diurnal_df.empty:
             fig_d = px.line(diurnal_df, x="hour", y=["temperature_c", "aqi"], markers=True, template="plotly_dark")
-            fig_d.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(l=10, r=10, t=10, b=10), height=320)
-            st.plotly_chart(fig_d, use_container_width=True)
+            fig_d.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                margin=dict(l=10, r=10, t=10, b=40), height=320,
+                legend=dict(orientation="h", yanchor="bottom", y=-0.28, xanchor="center", x=0.5, title_text="")
+            )
+            st.plotly_chart(fig_d, use_container_width=True, config={"displayModeBar": False})
 
     col_ed3, col_ed4 = st.columns(2)
     with col_ed3:
