@@ -434,43 +434,61 @@ def render_left_panel_html(selected_city: str, aqi_val: float, cat_name: str, bg
     return html
 
 
-def render_hero_header_html(selected_city: str, city_info: Dict[str, Any], temp_val: float, high_temp: float, low_temp: float, weather_icon: str, weather_desc: str, wind_val: float, humidity_val: float, rain_val: float, uv_val: float, aqi_val: float) -> str:
+def degrees_to_compass(deg: float) -> str:
+    dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+    idx = int((float(deg) + 22.5) // 45) % 8
+    return dirs[idx]
+
+
+def render_hero_header_html(
+    selected_city: str,
+    city_info: Dict[str, Any],
+    temp_val: float,
+    high_temp: float,
+    low_temp: float,
+    weather_icon: str,
+    weather_desc: str,
+    wind_val: float,
+    humidity_val: float,
+    rain_val: float,
+    uv_val: float,
+    aqi_val: float,
+    wind_dir_deg: float = 180.0,
+    rain_prob_pct: float = 0.0,
+) -> str:
     """Renders the top portion of the right hero frame with zero indentation to prevent code blocks."""
     now_str = datetime.now().strftime('%A, %B %d')
     province = city_info.get('province', 'Pakistan')
     elevation = city_info.get('elevation_m', 200)
     climate = city_info.get('climate', 'Continental')
-    
-    html = f"""<div class="hero-glass-frame">
-<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
-<div style="display:flex; align-items:center; gap:8px;">
-<span style="font-size:1.1rem; color:#38bdf8;">📍</span>
-<span style="font-size:1.15rem; font-weight:700; color:#f8fafc;">
-{selected_city}, {province}, Pakistan
-</span>
-<span style="color:#64748b; font-size:0.9rem;">({now_str})</span>
-</div>
-<div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:9999px; padding:4px 14px; font-size:0.78rem; color:#94a3b8;">
-Elevation: {elevation}m • {climate}
-</div>
-</div>
-<div style="display:flex; align-items:baseline; gap:24px; flex-wrap:wrap;">
-<div class="hero-temp-title">{temp_val:.0f}°</div>
-<div style="color:#94a3b8; font-size:1.1rem; font-weight:600; font-family:'JetBrains Mono';">
-H <span style="color:#ffffff;">{high_temp:.0f}°</span> &nbsp;•&nbsp; L <span style="color:#ffffff;">{low_temp:.0f}°</span>
-</div>
-</div>
-<div class="hero-condition-text">
-<span style="font-size:2.2rem; margin-right:8px; vertical-align:middle;">{weather_icon}</span>
-<b>{weather_desc}</b>
-</div>
-<div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px;">
-<div class="stat-pill">💨 Wind: <b>{wind_val:.1f} km/h</b></div>
-<div class="stat-pill">💧 Humidity: <b>{humidity_val:.0f}%</b></div>
-<div class="stat-pill">🌧️ Precip: <b>{rain_val:.1f} mm</b></div>
-<div class="stat-pill">☀️ UV Index: <b>{uv_val:.1f}</b></div>
-<div class="stat-pill">🔘 Station Air: <b>{aqi_val:.0f} AQI</b></div>
-</div>"""
+    compass = degrees_to_compass(wind_dir_deg)
+
+    html = (
+        '<div class="hero-glass-frame">'
+        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:12px;">'
+        '<div style="display:flex;align-items:center;gap:8px;">'
+        '<span style="font-size:1.1rem;color:#38bdf8;">📍</span>'
+        f'<span style="font-size:1.15rem;font-weight:700;color:#f8fafc;">{selected_city}, {province}, Pakistan</span>'
+        f'<span style="color:#64748b;font-size:0.9rem;">({now_str})</span>'
+        '</div>'
+        f'<div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:9999px;padding:4px 14px;font-size:0.78rem;color:#94a3b8;">Elevation: {elevation}m • {climate}</div>'
+        '</div>'
+        '<div style="display:flex;align-items:baseline;gap:24px;flex-wrap:wrap;">'
+        f'<div class="hero-temp-title">{temp_val:.0f}°</div>'
+        f'<div style="color:#94a3b8;font-size:1.1rem;font-weight:600;font-family:\'JetBrains Mono\';">H <span style="color:#ffffff;">{high_temp:.0f}°</span> &nbsp;•&nbsp; L <span style="color:#ffffff;">{low_temp:.0f}°</span></div>'
+        '</div>'
+        '<div class="hero-condition-text">'
+        f'<span style="font-size:2.2rem;margin-right:8px;vertical-align:middle;">{weather_icon}</span><b>{weather_desc}</b>'
+        '</div>'
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
+        f'<div class="stat-pill">💨 Wind: <b>{wind_val:.1f} km/h ({compass} {wind_dir_deg:.0f}°)</b></div>'
+        f'<div class="stat-pill">💧 Humidity: <b>{humidity_val:.0f}%</b></div>'
+        f'<div class="stat-pill">🌧️ Precip: <b>{rain_val:.1f} mm ({rain_prob_pct:.0f}%)</b></div>'
+        f'<div class="stat-pill">☀️ UV Index: <b>{uv_val:.1f}</b></div>'
+        f'<div class="stat-pill">🔘 Air Quality: <b>{aqi_val:.0f} AQI</b></div>'
+        '</div>'
+        '</div>'
+    )
     return html
 
 

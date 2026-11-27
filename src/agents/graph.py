@@ -51,9 +51,11 @@ def build_weather_agent_graph():
     return workflow.compile()
 
 
-def run_agent_pipeline(city: str = DEFAULT_CITY) -> AgentWeatherState:
+def run_agent_pipeline(city: str = DEFAULT_CITY, allow_retrain: bool = False) -> AgentWeatherState:
     """
     Executes the compiled LangGraph agent graph with an initialized state.
+    Set allow_retrain=True in automated CLI/CI workflows so Drift Agent can
+    synchronously execute or dispatch automated retraining on drift breach.
     """
     logger.info(f"=== Initiating LangGraph Multi-Agent Execution for {city} ===")
     app = build_weather_agent_graph()
@@ -71,6 +73,7 @@ def run_agent_pipeline(city: str = DEFAULT_CITY) -> AgentWeatherState:
         "weather_report": "",
         "drift_status": {},
         "triggered_retraining": False,
+        "allow_retrain": allow_retrain,
         "llm_logs": [],
         "errors": []
     }

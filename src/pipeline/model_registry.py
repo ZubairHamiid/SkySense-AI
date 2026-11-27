@@ -116,6 +116,14 @@ class ModelRegistry:
         if is_champion:
             record["is_champion"] = True
             self.metadata["champions"][metric_key] = record
+            # Optional cloud sync to Hopsworks Model Registry when API key is configured
+            try:
+                from src.pipeline.hopsworks_store import HopsworksFeatureStore
+                hw = HopsworksFeatureStore()
+                if hw.is_configured():
+                    hw.register_model(metric_key, model_name, str(artifact_path), val_metrics)
+            except Exception as e:
+                logger.warning(f"Hopsworks Model Registry sync skipped: {e}")
             
         self.metadata["history"].append(record)
         self._save_metadata()

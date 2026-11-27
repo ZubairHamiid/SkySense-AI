@@ -169,18 +169,18 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:51:21.236919",
+      "registered_at": "2026-11-27T20:10:58.939481",
       "is_champion": true
     },
     "temperature_c": {
       "metric": "temperature_c",
-      "family": "Classical_ML",
-      "model_name": "Random_Forest",
-      "artifact_file": "temperature_c_Classical_ML_Random_Forest.joblib",
+      "family": "Deep_Learning",
+      "model_name": "PyTorch_LSTM",
+      "artifact_file": "temperature_c_Deep_Learning_PyTorch_LSTM.joblib",
       "val_metrics": {
-        "rmse": 1.4523,
-        "mae": 1.0529,
-        "r2": 0.9402
+        "rmse": 1.4161,
+        "mae": 1.0214,
+        "r2": 0.9432
       },
       "baseline_metrics": {
         "rmse": 1.5791,
@@ -341,7 +341,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:52:35.624925",
+      "registered_at": "2026-11-27T20:12:13.542747",
       "is_champion": true
     },
     "precipitation_mm": {
@@ -513,7 +513,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:53:19.177841",
+      "registered_at": "2026-11-27T20:13:24.196313",
       "is_champion": true
     },
     "humidity_pct": {
@@ -685,7 +685,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:54:33.260425",
+      "registered_at": "2026-11-27T20:14:44.215226",
       "is_champion": true
     },
     "uv_index": {
@@ -857,18 +857,18 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:55:33.406732",
+      "registered_at": "2026-11-27T20:16:05.783200",
       "is_champion": true
     },
     "wind_speed_kmh": {
       "metric": "wind_speed_kmh",
-      "family": "Classical_ML",
-      "model_name": "Random_Forest",
-      "artifact_file": "wind_speed_kmh_Classical_ML_Random_Forest.joblib",
+      "family": "Deep_Learning",
+      "model_name": "PyTorch_LSTM",
+      "artifact_file": "wind_speed_kmh_Deep_Learning_PyTorch_LSTM.joblib",
       "val_metrics": {
-        "rmse": 2.8493,
-        "mae": 2.2147,
-        "r2": 0.5175
+        "rmse": 2.8416,
+        "mae": 2.1855,
+        "r2": 0.5201
       },
       "baseline_metrics": {
         "rmse": 3.5486,
@@ -1029,7 +1029,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:56:47.613291",
+      "registered_at": "2026-11-27T20:17:31.386619",
       "is_champion": true
     }
   },
@@ -1037,12 +1037,12 @@
     {
       "metric": "aqi",
       "family": "Statistical",
-      "model_name": "AutoRegressive_OLS",
-      "artifact_file": "aqi_Statistical_AutoRegressive_OLS.joblib",
+      "model_name": "SARIMAX",
+      "artifact_file": "aqi_Statistical_SARIMAX.joblib",
       "val_metrics": {
-        "rmse": 21.4225,
-        "mae": 15.7624,
-        "r2": 0.7372
+        "rmse": 33.3623,
+        "mae": 28.2774,
+        "r2": 0.3627
       },
       "baseline_metrics": {
         "rmse": 22.6658,
@@ -1203,7 +1203,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:51:21.087990",
+      "registered_at": "2026-11-27T20:10:58.834490",
       "is_champion": true
     },
     {
@@ -1375,7 +1375,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:51:21.094068",
+      "registered_at": "2026-11-27T20:10:58.840805",
       "is_champion": true
     },
     {
@@ -1547,7 +1547,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:51:21.224032"
+      "registered_at": "2026-11-27T20:10:58.927085"
     },
     {
       "metric": "aqi",
@@ -1718,18 +1718,18 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:51:21.236919",
+      "registered_at": "2026-11-27T20:10:58.939481",
       "is_champion": true
     },
     {
       "metric": "aqi",
       "family": "Deep_Learning",
-      "model_name": "Neural_Network_MLP",
-      "artifact_file": "aqi_Deep_Learning_Neural_Network_MLP.joblib",
+      "model_name": "PyTorch_LSTM",
+      "artifact_file": "aqi_Deep_Learning_PyTorch_LSTM.joblib",
       "val_metrics": {
-        "rmse": 19.496,
-        "mae": 14.783,
-        "r2": 0.7824
+        "rmse": 20.5016,
+        "mae": 15.618,
+        "r2": 0.7593
       },
       "baseline_metrics": {
         "rmse": 22.6658,
@@ -1890,17 +1890,17 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:51:21.258895"
+      "registered_at": "2026-11-27T20:10:58.965703"
     },
     {
       "metric": "temperature_c",
       "family": "Statistical",
-      "model_name": "AutoRegressive_OLS",
-      "artifact_file": "temperature_c_Statistical_AutoRegressive_OLS.joblib",
+      "model_name": "SARIMAX",
+      "artifact_file": "temperature_c_Statistical_SARIMAX.joblib",
       "val_metrics": {
-        "rmse": 1.5376,
-        "mae": 1.087,
-        "r2": 0.933
+        "rmse": 6.0785,
+        "mae": 5.8829,
+        "r2": -0.0473
       },
       "baseline_metrics": {
         "rmse": 1.5791,
@@ -2061,7 +2061,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:52:35.537843",
+      "registered_at": "2026-11-27T20:12:13.392531",
       "is_champion": true
     },
     {
@@ -2233,7 +2233,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:52:35.549033",
+      "registered_at": "2026-11-27T20:12:13.402745",
       "is_champion": true
     },
     {
@@ -2405,7 +2405,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:52:35.624925",
+      "registered_at": "2026-11-27T20:12:13.500260",
       "is_champion": true
     },
     {
@@ -2577,17 +2577,17 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:52:35.641395"
+      "registered_at": "2026-11-27T20:12:13.515484"
     },
     {
       "metric": "temperature_c",
       "family": "Deep_Learning",
-      "model_name": "Neural_Network_MLP",
-      "artifact_file": "temperature_c_Deep_Learning_Neural_Network_MLP.joblib",
+      "model_name": "PyTorch_LSTM",
+      "artifact_file": "temperature_c_Deep_Learning_PyTorch_LSTM.joblib",
       "val_metrics": {
-        "rmse": 1.5314,
-        "mae": 1.1361,
-        "r2": 0.9335
+        "rmse": 1.4161,
+        "mae": 1.0214,
+        "r2": 0.9432
       },
       "baseline_metrics": {
         "rmse": 1.5791,
@@ -2748,17 +2748,18 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:52:35.670473"
+      "registered_at": "2026-11-27T20:12:13.542747",
+      "is_champion": true
     },
     {
       "metric": "precipitation_mm",
       "family": "Statistical",
-      "model_name": "AutoRegressive_OLS",
-      "artifact_file": "precipitation_mm_Statistical_AutoRegressive_OLS.joblib",
+      "model_name": "SARIMAX",
+      "artifact_file": "precipitation_mm_Statistical_SARIMAX.joblib",
       "val_metrics": {
-        "rmse": 0.5197,
-        "mae": 0.114,
-        "r2": 0.0094
+        "rmse": 0.519,
+        "mae": 0.1208,
+        "r2": 0.012
       },
       "baseline_metrics": {
         "rmse": 0.7111,
@@ -2919,7 +2920,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:53:19.159504",
+      "registered_at": "2026-11-27T20:13:24.181056",
       "is_champion": true
     },
     {
@@ -3091,7 +3092,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:53:19.177841",
+      "registered_at": "2026-11-27T20:13:24.196313",
       "is_champion": true
     },
     {
@@ -3263,7 +3264,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:53:19.265031"
+      "registered_at": "2026-11-27T20:13:24.293303"
     },
     {
       "metric": "precipitation_mm",
@@ -3434,17 +3435,17 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:53:19.283251"
+      "registered_at": "2026-11-27T20:13:24.313967"
     },
     {
       "metric": "precipitation_mm",
       "family": "Deep_Learning",
-      "model_name": "Neural_Network_MLP",
-      "artifact_file": "precipitation_mm_Deep_Learning_Neural_Network_MLP.joblib",
+      "model_name": "PyTorch_LSTM",
+      "artifact_file": "precipitation_mm_Deep_Learning_PyTorch_LSTM.joblib",
       "val_metrics": {
-        "rmse": 0.5215,
-        "mae": 0.1601,
-        "r2": 0.0025
+        "rmse": 0.5143,
+        "mae": 0.0933,
+        "r2": 0.0298
       },
       "baseline_metrics": {
         "rmse": 0.7111,
@@ -3605,17 +3606,17 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:53:19.316371"
+      "registered_at": "2026-11-27T20:13:24.353364"
     },
     {
       "metric": "humidity_pct",
       "family": "Statistical",
-      "model_name": "AutoRegressive_OLS",
-      "artifact_file": "humidity_pct_Statistical_AutoRegressive_OLS.joblib",
+      "model_name": "SARIMAX",
+      "artifact_file": "humidity_pct_Statistical_SARIMAX.joblib",
       "val_metrics": {
-        "rmse": 9.3735,
-        "mae": 6.5392,
-        "r2": 0.8028
+        "rmse": 10.4497,
+        "mae": 7.8711,
+        "r2": 0.7549
       },
       "baseline_metrics": {
         "rmse": 9.8183,
@@ -3776,7 +3777,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:54:33.134060",
+      "registered_at": "2026-11-27T20:14:43.971355",
       "is_champion": true
     },
     {
@@ -3948,7 +3949,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:54:33.146721",
+      "registered_at": "2026-11-27T20:14:43.990367",
       "is_champion": true
     },
     {
@@ -4120,7 +4121,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:54:33.238554",
+      "registered_at": "2026-11-27T20:14:44.192626",
       "is_champion": true
     },
     {
@@ -4292,18 +4293,18 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:54:33.260425",
+      "registered_at": "2026-11-27T20:14:44.215226",
       "is_champion": true
     },
     {
       "metric": "humidity_pct",
       "family": "Deep_Learning",
-      "model_name": "Neural_Network_MLP",
-      "artifact_file": "humidity_pct_Deep_Learning_Neural_Network_MLP.joblib",
+      "model_name": "PyTorch_LSTM",
+      "artifact_file": "humidity_pct_Deep_Learning_PyTorch_LSTM.joblib",
       "val_metrics": {
-        "rmse": 9.3188,
-        "mae": 6.7825,
-        "r2": 0.8051
+        "rmse": 8.7234,
+        "mae": 6.232,
+        "r2": 0.8292
       },
       "baseline_metrics": {
         "rmse": 9.8183,
@@ -4464,17 +4465,17 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:54:33.307127"
+      "registered_at": "2026-11-27T20:14:44.256873"
     },
     {
       "metric": "uv_index",
       "family": "Statistical",
-      "model_name": "AutoRegressive_OLS",
-      "artifact_file": "uv_index_Statistical_AutoRegressive_OLS.joblib",
+      "model_name": "SARIMAX",
+      "artifact_file": "uv_index_Statistical_SARIMAX.joblib",
       "val_metrics": {
-        "rmse": 0.4997,
-        "mae": 0.2109,
-        "r2": 0.9564
+        "rmse": 0.5024,
+        "mae": 0.2387,
+        "r2": 0.956
       },
       "baseline_metrics": {
         "rmse": 0.5245,
@@ -4635,7 +4636,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:55:33.273584",
+      "registered_at": "2026-11-27T20:16:05.609163",
       "is_champion": true
     },
     {
@@ -4807,7 +4808,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:55:33.288332",
+      "registered_at": "2026-11-27T20:16:05.637120",
       "is_champion": true
     },
     {
@@ -4979,7 +4980,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:55:33.373303",
+      "registered_at": "2026-11-27T20:16:05.752529",
       "is_champion": true
     },
     {
@@ -5151,18 +5152,18 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:55:33.406732",
+      "registered_at": "2026-11-27T20:16:05.783200",
       "is_champion": true
     },
     {
       "metric": "uv_index",
       "family": "Deep_Learning",
-      "model_name": "Neural_Network_MLP",
-      "artifact_file": "uv_index_Deep_Learning_Neural_Network_MLP.joblib",
+      "model_name": "PyTorch_LSTM",
+      "artifact_file": "uv_index_Deep_Learning_PyTorch_LSTM.joblib",
       "val_metrics": {
-        "rmse": 0.5269,
-        "mae": 0.246,
-        "r2": 0.9516
+        "rmse": 0.4653,
+        "mae": 0.2249,
+        "r2": 0.9622
       },
       "baseline_metrics": {
         "rmse": 0.5245,
@@ -5323,17 +5324,17 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:55:33.454385"
+      "registered_at": "2026-11-27T20:16:05.831965"
     },
     {
       "metric": "wind_speed_kmh",
       "family": "Statistical",
-      "model_name": "AutoRegressive_OLS",
-      "artifact_file": "wind_speed_kmh_Statistical_AutoRegressive_OLS.joblib",
+      "model_name": "SARIMAX",
+      "artifact_file": "wind_speed_kmh_Statistical_SARIMAX.joblib",
       "val_metrics": {
-        "rmse": 3.0847,
-        "mae": 2.4091,
-        "r2": 0.4344
+        "rmse": 3.0807,
+        "mae": 2.3975,
+        "r2": 0.4359
       },
       "baseline_metrics": {
         "rmse": 3.5486,
@@ -5494,7 +5495,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:56:47.509052",
+      "registered_at": "2026-11-27T20:17:31.140576",
       "is_champion": true
     },
     {
@@ -5666,7 +5667,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:56:47.529548",
+      "registered_at": "2026-11-27T20:17:31.170096",
       "is_champion": true
     },
     {
@@ -5838,7 +5839,7 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:56:47.613291",
+      "registered_at": "2026-11-27T20:17:31.295801",
       "is_champion": true
     },
     {
@@ -6010,17 +6011,17 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:56:47.641682"
+      "registered_at": "2026-11-27T20:17:31.330477"
     },
     {
       "metric": "wind_speed_kmh",
       "family": "Deep_Learning",
-      "model_name": "Neural_Network_MLP",
-      "artifact_file": "wind_speed_kmh_Deep_Learning_Neural_Network_MLP.joblib",
+      "model_name": "PyTorch_LSTM",
+      "artifact_file": "wind_speed_kmh_Deep_Learning_PyTorch_LSTM.joblib",
       "val_metrics": {
-        "rmse": 3.0694,
-        "mae": 2.3705,
-        "r2": 0.44
+        "rmse": 2.8416,
+        "mae": 2.1855,
+        "r2": 0.5201
       },
       "baseline_metrics": {
         "rmse": 3.5486,
@@ -6181,7 +6182,8 @@
         "wind_u",
         "wind_v"
       ],
-      "registered_at": "2026-11-27T19:56:47.697490"
+      "registered_at": "2026-11-27T20:17:31.386619",
+      "is_champion": true
     }
   ]
 }

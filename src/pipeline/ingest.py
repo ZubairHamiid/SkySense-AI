@@ -49,10 +49,10 @@ def run_hourly_ingestion(city: str = DEFAULT_CITY, trigger_agents: bool = True):
     fs.save_features(df_features, city=city)
     logger.info(f"Feature Store updated with {len(df_features)} total feature rows.")
     
-    # 4. Trigger the LangGraph Agentic Reasoning Layer
+    # 4. Trigger the LangGraph Agentic Reasoning Layer (with drift-triggered retraining enabled)
     if trigger_agents:
         logger.info("Triggering LangGraph agentic reasoning cycle...")
-        state = run_agent_pipeline(city=city)
+        state = run_agent_pipeline(city=city, allow_retrain=True)
         logger.info("Agent cycle completed successfully.")
         return state
         

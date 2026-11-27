@@ -64,3 +64,32 @@ class HopsworksFeatureStore:
             logger.error(f"Failed to sync to Hopsworks: {e}")
             return False
 
+    def register_model(
+        self,
+        metric: str,
+        model_name: str,
+        model_file_path: str,
+        val_metrics: dict
+    ) -> bool:
+        """Uploads a champion model artifact and evaluation metrics to Hopsworks Model Registry."""
+        if not self.project and not self.connect():
+            return False
+
+        try:
+            mr = self.project.get_model_registry()
+            hw_model = mr.python.create_model(
+                name=f"skysense_{metric}_{model_name}".lower(),
+                metrics={
+                    "rmse": float(val_metrics.get("rmse", 0.0)),
+                    "mae": float(val_metrics.get("mae", 0.0)),
+                    "r2": float(val_metrics.get("r2", 0.0)),
+                },
+                description=f"SkySense AI 24h-ahead champion model for {metric} ({model_name})"
+            )
+            hw_model.save(str(model_file_path))
+            logger.info(f"Champion model [{metric}/{model_name}] uploaded to Hopsworks Model Registry!")
+            return True
+        except Exception as e:
+            logger.warning(f"Hopsworks Model Registry upload skipped: {e}")
+            return False
+

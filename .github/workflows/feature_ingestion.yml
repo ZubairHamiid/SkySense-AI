@@ -36,6 +36,8 @@ jobs:
           HOPSWORKS_PROJECT: ${{ secrets.HOPSWORKS_PROJECT || 'AgentWeather' }}
           OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
           AQICN_API_KEY: ${{ secrets.AQICN_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
           TARGET_CITY: ${{ github.event.inputs.city || 'Lahore' }}
         run: |
           python -m src.pipeline.ingest

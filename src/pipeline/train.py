@@ -3,7 +3,6 @@ import pandas as pd
 from typing import Dict, Any, List
 from sklearn.linear_model import Ridge
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 import xgboost as xgb
@@ -13,6 +12,7 @@ from config.settings import METRICS, FORECAST_HORIZON_HOURS, PROCESSED_DATA_DIR
 from src.pipeline.feature_store import FeatureStoreManager
 from src.pipeline.feature_engineering import get_feature_columns
 from src.pipeline.model_registry import ModelRegistry
+from src.pipeline.models_custom import SARIMAXForecaster, PyTorchLSTMForecaster
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("TrainingPipeline")
@@ -187,16 +187,16 @@ def train_and_evaluate_pipeline(reset_registry: bool = True) -> Dict[str, Any]:
 
         candidates = []
 
-        # --- Family 1: Statistical ---
+        # --- Family 1: Statistical (statsmodels SARIMAX) ---
         try:
-            stat_model = StatisticalModelWrapper(metric=metric)
+            stat_model = SARIMAXForecaster(metric=metric)
             stat_model.fit(X_train, y_train)
             stat_pred = stat_model.predict(X_val)
             stat_scores = registry.evaluate_model(y_val.values, stat_pred)
-            candidates.append(("Statistical", "AutoRegressive_OLS", stat_model, stat_scores))
-            logger.info(f"[{metric}] STATISTICAL (AutoReg) -> RMSE: {stat_scores['rmse']}, MAE: {stat_scores['mae']}, R²: {stat_scores['r2']}")
+            candidates.append(("Statistical", "SARIMAX", stat_model, stat_scores))
+            logger.info(f"[{metric}] STATISTICAL (SARIMAX) -> RMSE: {stat_scores['rmse']}, MAE: {stat_scores['mae']}, R²: {stat_scores['r2']}")
         except Exception as e:
-            logger.warning(f"[{metric}] Statistical model error: {e}")
+            logger.warning(f"[{metric}] Statistical SARIMAX error: {e}")
 
         # --- Family 2: Classical ML (Ridge, Random Forest, XGBoost) ---
         try:
@@ -233,30 +233,18 @@ def train_and_evaluate_pipeline(reset_registry: bool = True) -> Dict[str, Any]:
         except Exception as e:
             logger.warning(f"[{metric}] Classical ML error: {e}")
 
-        # --- Family 3: Deep Learning (MLP Neural Network) ---
+        # --- Family 3: Deep Learning (PyTorch LSTM Sequence Model) ---
         try:
-            dl_pipeline = Pipeline([
-                ("scaler", StandardScaler()),
-                ("mlp", MLPRegressor(
-                    hidden_layer_sizes=(64, 32),
-                    activation="relu",
-                    solver="adam",
-                    alpha=0.01,
-                    batch_size=512,
-                    max_iter=40,
-                    n_iter_no_change=5,
-                    early_stopping=True,
-                    validation_fraction=0.1,
-                    random_state=42
-                ))
-            ])
-            dl_pipeline.fit(X_train, y_train)
-            dl_pred = dl_pipeline.predict(X_val)
-            dl_scores = registry.evaluate_model(y_val.values, dl_pred)
-            candidates.append(("Deep_Learning", "Neural_Network_MLP", dl_pipeline, dl_scores))
-            logger.info(f"[{metric}] DEEP LEARNING (MLP Neural Net) -> RMSE: {dl_scores['rmse']}, MAE: {dl_scores['mae']}, R²: {dl_scores['r2']}")
+            lstm_model = PyTorchLSTMForecaster(
+                hidden_size=48, epochs=8, batch_size=512, lr=2e-3, random_state=42
+            )
+            lstm_model.fit(X_train, y_train)
+            lstm_pred = lstm_model.predict(X_val)
+            lstm_scores = registry.evaluate_model(y_val.values, lstm_pred)
+            candidates.append(("Deep_Learning", "PyTorch_LSTM", lstm_model, lstm_scores))
+            logger.info(f"[{metric}] DEEP LEARNING (PyTorch LSTM) -> RMSE: {lstm_scores['rmse']}, MAE: {lstm_scores['mae']}, R²: {lstm_scores['r2']}")
         except Exception as e:
-            logger.warning(f"[{metric}] Deep learning error: {e}")
+            logger.warning(f"[{metric}] Deep learning PyTorch LSTM error: {e}")
 
         # Register each candidate in Model Registry and select Champion
         for family, name, artifact, scores in candidates:

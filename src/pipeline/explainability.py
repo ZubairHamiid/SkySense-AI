@@ -50,9 +50,41 @@ class ModelExplainer:
         elif hasattr(core_model, "coef_"):
             importances = np.abs(core_model.coef_)
         elif hasattr(core_model, "weights"):
-            # Statistical model
+            # Statistical model (SARIMAX)
             importances = np.abs(core_model.weights)
             features = getattr(core_model, "features_used", features[:len(importances)])
+        else:
+            # Deep Learning (PyTorch LSTM) permutation sensitivity across key sequence/context features
+            try:
+                feat_df = self.fs.get_features()
+                if not feat_df.empty and features:
+                    avail = [f for f in features if f in feat_df.columns]
+                    sample_df = feat_df[avail].fillna(0.0).sample(min(200, len(feat_df)), random_state=42)
+                    base_pred = np.asarray(model.predict(sample_df), dtype=float)
+                    # Evaluate sensitivity on active LSTM input channels/context for speed
+                    cand_feats = []
+                    if hasattr(core_model, "SEQ_CHANNELS") and hasattr(core_model, "LAG_SUFFIXES"):
+                        for suf in core_model.LAG_SUFFIXES:
+                            for ch in core_model.SEQ_CHANNELS:
+                                c = f"{ch}{suf}"
+                                if c in avail:
+                                    cand_feats.append(c)
+                        for c in getattr(core_model, "ctx_cols", []):
+                            if c in avail and c not in cand_feats:
+                                cand_feats.append(c)
+                    else:
+                        cand_feats = avail[:30]
+                    rng = np.random.default_rng(42)
+                    scores = []
+                    for col in cand_feats:
+                        pert = sample_df.copy()
+                        pert[col] = rng.permutation(pert[col].values)
+                        diff = np.mean(np.abs(np.asarray(model.predict(pert), dtype=float) - base_pred))
+                        scores.append(float(diff))
+                    features = cand_feats
+                    importances = np.array(scores, dtype=float)
+            except Exception as e:
+                logger.warning(f"Permutation importance fallback skipped: {e}")
             
         if importances is not None and len(importances) == len(features):
             df_imp = pd.DataFrame({
@@ -99,7 +131,9 @@ class ModelExplainer:
                 return {}
                 
             X_clean = feat_df[feature_names].fillna(0.0)
-            n_samples = min(50, len(X_clean))
+            is_tree = hasattr(core_model, "predict") and not is_pipeline and hasattr(core_model, "feature_importances_")
+            max_bg = 50 if is_tree else 12
+            n_samples = min(max_bg, len(X_clean))
             if n_samples == 0:
                 return {}
             X_bg = X_clean.sample(n_samples, random_state=42)
@@ -107,7 +141,7 @@ class ModelExplainer:
             sample_dict = {f: float(sample_row.get(f, 0.0)) for f in feature_names}
             X_sample = pd.DataFrame([sample_dict]).fillna(0.0)
             
-            if hasattr(core_model, "predict") and not is_pipeline and hasattr(core_model, "feature_importances_"):
+            if is_tree:
                 explainer = shap.TreeExplainer(core_model, X_bg)
                 shap_vals = explainer.shap_values(X_sample)
                 base_value = float(explainer.expected_value)
@@ -151,6 +185,7 @@ class ModelExplainer:
     def explain_prediction_lime(self, metric: str, sample_row: pd.Series) -> List[Tuple[str, float]]:
         """
         Computes local LIME tabular explanation for the given prediction.
+        Safely handles missing values and subsamples background for sub-second latency.
         """
         champ_tuple = self.registry.get_champion(metric)
         if not champ_tuple:
@@ -160,17 +195,36 @@ class ModelExplainer:
         feature_names = meta.get("feature_names", [])
         
         feat_df = self.fs.get_features()
-        if feat_df.empty:
+        if feat_df.empty or not feature_names:
             return []
-            
-        X_train = feat_df[feature_names].dropna().values
-        explainer = LimeTabularExplainer(
-            training_data=X_train,
-            feature_names=feature_names,
-            mode="regression",
-            random_state=42
-        )
-        
-        sample_vals = sample_row[feature_names].fillna(0.0).values
-        exp = explainer.explain_instance(sample_vals, model.predict, num_features=6)
-        return exp.as_list()
+
+        try:
+            avail = [f for f in feature_names if f in feat_df.columns]
+            if not avail:
+                return []
+            bg_df = feat_df[avail].fillna(0.0)
+            n_bg = min(400, len(bg_df))
+            X_bg = bg_df.sample(n_bg, random_state=42).values
+
+            explainer = LimeTabularExplainer(
+                training_data=X_bg,
+                feature_names=avail,
+                mode="regression",
+                random_state=42
+            )
+
+            sample_vals = np.array([float(sample_row.get(f, 0.0)) for f in avail], dtype=float)
+            sample_vals = np.nan_to_num(sample_vals, nan=0.0)
+
+            def _predict_wrapper(arr: np.ndarray) -> np.ndarray:
+                df_in = pd.DataFrame(arr, columns=avail)
+                for f in feature_names:
+                    if f not in df_in.columns:
+                        df_in[f] = 0.0
+                return np.asarray(model.predict(df_in[feature_names]), dtype=float)
+
+            exp = explainer.explain_instance(sample_vals, _predict_wrapper, num_features=6, num_samples=300)
+            return exp.as_list()
+        except Exception as e:
+            logger.warning(f"LIME local explanation fallback: {e}")
+            return []

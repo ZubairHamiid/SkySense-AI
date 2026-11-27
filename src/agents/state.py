@@ -28,6 +28,7 @@ class AgentWeatherState(TypedDict):
     # Drift Agent outputs
     drift_status: Dict[str, Any]                 # Data drift and model drift evaluation metrics
     triggered_retraining: bool                   # Whether automated retraining was dispatched
+    allow_retrain: bool                          # If True (CLI/CI mode), executes retraining on drift breach
     
     # Auditing and telemetry
     llm_logs: List[Dict[str, Any]]               # Prompt, response, latency, status

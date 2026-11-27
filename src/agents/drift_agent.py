@@ -215,11 +215,48 @@ def drift_node(state: AgentWeatherState) -> AgentWeatherState:
                 details=f"Recent MAE: {md_info['recent_mae']} vs Val MAE: {md_info['validation_mae']}"
             )
             
-    # 4. Trigger Retraining or Schedule if threshold is crossed
+    # 4. Trigger Retraining or Dispatch GitHub Actions if threshold is crossed
     triggered_retrain = False
     if overall_drift:
-        logger.warning("🚨 DRIFT THRESHOLD BREACHED! Flagging automated model retraining in audit ledger...")
-        triggered_retrain = True
+        logger.warning("🚨 DRIFT THRESHOLD BREACHED! Dispatching automated retraining protocol...")
+        action_taken = "AUTOMATED_RETRAINING_SCHEDULED"
+
+        # 4a. Optional GitHub Actions repository_dispatch webhook (non-blocking CI/CD trigger)
+        import os, requests
+        gh_token = os.getenv("GITHUB_TOKEN", "").strip()
+        gh_repo = os.getenv("GITHUB_REPOSITORY", "").strip()
+        if gh_token and gh_repo:
+            try:
+                resp = requests.post(
+                    f"https://api.github.com/repos/{gh_repo}/dispatches",
+                    headers={
+                        "Authorization": f"Bearer {gh_token}",
+                        "Accept": "application/vnd.github+json",
+                    },
+                    json={"event_type": "drift_alert_retrain", "client_payload": {"city": state.get("city", "Lahore")}},
+                    timeout=5,
+                )
+                if resp.status_code in (200, 204):
+                    action_taken = "GITHUB_ACTIONS_RETRAIN_DISPATCHED"
+                    triggered_retrain = True
+                    logger.info("GitHub Actions drift_alert_retrain dispatch succeeded!")
+            except Exception as e:
+                logger.warning(f"GitHub Actions dispatch skipped: {e}")
+
+        # 4b. In CLI / scheduled CI mode (allow_retrain=True), execute retraining directly if not dispatched
+        if state.get("allow_retrain", False) and not triggered_retrain:
+            try:
+                from src.pipeline.train import train_and_evaluate_pipeline
+                train_and_evaluate_pipeline(reset_registry=False)
+                action_taken = "AUTOMATED_RETRAINING_EXECUTED"
+                triggered_retrain = True
+                logger.info("Automated drift-triggered retraining completed!")
+            except Exception as e:
+                logger.error(f"Automated retraining failed: {e}")
+                state["errors"].append(f"Drift retrain error: {e}")
+        else:
+            triggered_retrain = True
+
         # Log retrain action into drift ledger
         fs.log_drift(
             metric="ALL",
@@ -227,7 +264,7 @@ def drift_node(state: AgentWeatherState) -> AgentWeatherState:
             score=1.0,
             threshold=1.0,
             drift_detected=True,
-            action_taken="AUTOMATED_RETRAINING_SCHEDULED",
+            action_taken=action_taken,
             details="Triggered by Drift Agent upon detection of statistical distribution divergence"
         )
             

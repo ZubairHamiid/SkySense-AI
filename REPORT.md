@@ -6,204 +6,145 @@
 
 ## 1. Executive Summary
 
-**SkySense AI** is an end-to-end autonomous meteorological and air quality forecasting system with an integrated agentic reasoning layer powered by **LangGraph**. Operating on a multi-metric paradigm, the platform forecasts six critical weather and air-pollution dimensions 24 hours into the future:
-1. **Air Quality Index (AQI)** (US EPA Standard calculated from PM2.5 & PM10)
+**SkySense AI** is an end-to-end automated weather and air-quality forecasting platform featuring a four-node **LangGraph** agentic reasoning layer. Built across **8 major Pakistani meteorological basins** (Lahore, Karachi, Islamabad, Peshawar, Quetta, Multan, Faisalabad, and Sargodha) with **140,520 hourly observations** (2 full years per city), the system forecasts six critical metrics 24 hours ahead:
+
+1. **Air Quality Index (AQI)** — US EPA Standard derived from PM2.5 & PM10
 2. **Temperature (°C)**
-3. **Precipitation (mm & Probability %)**
+3. **Precipitation (mm & rain probability %)**
 4. **Relative Humidity (%)**
-5. **UV Index (Solar Radiation)**
-6. **Wind (Speed km/h & Vector Direction)**
+5. **Solar UV Index (0–16)**
+6. **Wind (speed km/h & vector direction degrees/compass)**
 
-Unlike traditional static forecasting dashboards, AgentWeather couples machine learning forecasting models across three distinct paradigm families (**Statistical AR/OLS, Classical ML Ridge/RandomForest/XGBoost, and Deep Learning Multi-Layer Perceptrons**) with a four-node **LangGraph Agentic Reasoning Layer**:
-- **Forecast Agent**: Dispatches inferences from champion models registered in the Model Registry.
-- **Alert Agent**: Evaluates deterministic meteorological hazard thresholds and synthesizes role-tailored safety guidance for the General Public, Sensitive Groups, and Outdoor Workers.
-- **Weather Report Agent**: Crafts an engaging, broadcast-ready newsroom weather script.
-- **Drift Agent**: Continuously audits Data Drift (via two-sample Kolmogorov-Smirnov statistical tests and Population Stability Index) and Model Drift (residual tracking), autonomously triggering extra model retraining when distribution shifts exceed threshold limits.
+Every metric is benchmarked across **three distinct model families** against a **24-hour Naive Persistence Baseline** on a strictly **leakage-free global 24-hour embargoed chronological split**:
+- **Statistical**: `statsmodels` **SARIMAX** (State-Space MLE)
+- **Classical ML**: **Ridge Regression**, **Random Forest**, and **XGBoost**
+- **Deep Learning**: **PyTorch LSTM** (`torch.nn.LSTM` 7-step multi-channel sequence network fused with cyclical & geolocation context)
 
-The solution provides zero-cost accessibility through the Open-Meteo API, optional multi-source fusion with OpenWeather and AQICN, and dual-layer feature storage (Local SQLite/Parquet and Hopsworks Free Tier).
+All **6 out of 6 champion models beat the 24-hour naive persistence baseline** (`PyTorch LSTM` wins Temperature and Wind Speed; `XGBoost` wins AQI, Humidity, and UV Index; `Ridge Regression` wins Precipitation).
 
 ---
 
 ## 2. Data Sources & Multi-Source Fusion
 
 ### 2.1 Primary & Secondary Data Sources
-- **Primary Meteorological & Air Quality Archive/Live API**: Open-Meteo (Archive & ECMWF/GFS ensemble forecast endpoints). Provides continuous hourly readings for temperature, humidity, precipitation, wind speed/direction, UV radiation, PM2.5, PM10, CO, NO2, SO2, and O3.
-- **Secondary Atmospheric Provider**: OpenWeatherMap 2.5/3.0 REST API (configured via `OPENWEATHER_API_KEY`).
-- **Secondary Air Quality Station Provider**: AQICN (World Air Quality Index Project via `AQICN_API_KEY`).
+- **Primary Archive & Live Telemetry**: **Open-Meteo** Archive (`archive-api.open-meteo.com`) & Air Quality (`air-quality-api.open-meteo.com`) APIs — providing 2 full years of hourly temperature, humidity, precipitation, wind speed/direction, UV index, PM2.5, PM10, CO, NO2, SO2, and O3.
+- **Secondary Weather Provider**: **OpenWeatherMap API** (`OPENWEATHER_API_KEY`) for real-time station temperature, humidity, and wind observations.
+- **Secondary Air Quality Provider**: **AQICN World Air Quality Index API** (`AQICN_API_KEY`) for live ground-station AQI measurements.
 
 ### 2.2 Fusion & Time-Alignment Strategy
-The system fuses multi-source measurements into a single unified chronological hourly observation:
-$$\hat{x}_t = w_1 \cdot x_{t, \text{OpenMeteo}} + w_2 \cdot x_{t, \text{OpenWeather}}$$
-When secondary APIs report live station readings, a 50/50 weighted blend is applied to real-time temperature, humidity, and AQI observations. Each record is stamped with its source provenance (`open_meteo_archive`, `fused_openmeteo_openweather`, `fused_aqicn`) to maintain auditability.
+Observations are time-aligned to a unified hourly grid (`Asia/Karachi` / PKT). When secondary API keys are active, live readings are fused via a 50/50 weighted blend at the matching hourly timestamp:
+$$\hat{x}_t = 0.5 \cdot x_{t, \text{OpenMeteo}} + 0.5 \cdot x_{t, \text{Secondary}}$$
+Each record stores provenance metadata (`open_meteo_archive`, `open_meteo_live`, `fused_openmeteo_openweather`, `fused_aqicn`). Crucially, ingestion defaults to `forecast_hours=0` and filters `time <= now`, preventing API forecast rows from ever contaminating historical ground truth.
 
 ---
 
-## 3. Missing Value Imputation Strategy
+## 3. Zero-Leakage Causal Imputation Strategy
 
-Meteorological sensors and network APIs suffer from telemetry downtime, packet drops, and transmission gaps. To prevent data leakage and maintain temporal continuity, AgentWeather executes a strict multi-tier imputation protocol:
+To eliminate lookahead bias, [fetcher.py](src/pipeline/fetcher.py) enforces a strictly causal imputation pipeline verified via automated future-perturbation invariance tests (`max_diff == 0.0` when future rows are perturbed):
 
-| Gap Duration | Imputation Technique | Scientific Justification |
+| Gap Type | Imputation Method | Causality Guarantee |
 | :--- | :--- | :--- |
-| **Short Gaps ($\le 3$ hours)** | Linear Time Interpolation | Atmospheric states exhibit strong short-term inertia; linear blending preserves natural gradients without introducing high-frequency noise. |
-| **Medium Gaps ($4 - 24$ hours)** | Rolling Diurnal Group Median | Weather and pollutants have pronounced diurnal periodicity (e.g., peak solar heating at 15:00, nocturnal AQI thermal inversion). Replacing missing values with the median of that specific hour of day preserves the 24-hour cycle. |
-| **Long Gaps ($> 24$ hours) / Boundary NaNs** | Historical Seasonal Median | Prevents distortion from outlier values during protracted sensor failures. |
-| **Physical Constraints** | Boundary Clamping | Enforces hard meteorological domain bounds: Humidity $\in [0, 100\%]$, UV $\in [0, 16]$, Wind $\ge 0\text{ km/h}$, Rain $\ge 0\text{ mm}$, AQI $\in [0, 500]$. |
+| **Short Sensor Gaps ($\le 3$h)** | Causal Forward-Fill (`ffill(limit=3)`) | Uses only past observations $t-1, t-2, t-3$; zero future peeking |
+| **Medium / Long Gaps** | Expanding Past-Only Median (`expanding().median().shift(1)`) | Computes running median strictly over timestamps $< t$ |
+| **Initial Leading NaNs ($t=0$)** | Domain Physical Defaults | Safe fallback only at series start |
+| **Training Fold NaNs** | Train-Only Feature Medians | Computed strictly on `X_train` and applied to `X_val` |
+| **Physical Constraints** | Hard Meteorological Clamping | Humidity $\in [0, 100]$, UV $\in [0, 16]$, Wind $\ge 0$, Rain $\ge 0$, AQI $\in [0, 500]$ |
 
 ---
 
 ## 4. Feature Engineering & Target Construction
 
-### 4.1 Feature Taxonomy (150+ Total Features)
-1. **Time & Cyclical Encodings**:
-   - Discrete: `hour`, `day`, `month`, `day_of_week`, `is_weekend`, `day_of_year`.
-   - Continuous Trigonometric Encodings: $\sin(2\pi \cdot \text{hour}/24)$, $\cos(2\pi \cdot \text{hour}/24)$, $\sin(2\pi \cdot \text{month}/12)$, $\cos(2\pi \cdot \text{month}/12)$.
-2. **Lag Features**:
-   - Short and seasonal lags: `lag_1h`, `lag_2h`, `lag_3h`, `lag_6h`, `lag_12h`, and `lag_24h` (representing the 24-hour persistence baseline).
-3. **Rate-of-Change (First Differences)**:
-   - Velocity indicators: $\Delta_{1h} = x_t - x_{t-1}$, $\Delta_{3h} = x_t - x_{t-3}$, $\Delta_{24h} = x_t - x_{t-24}$.
-4. **Rolling Temporal Statistics**:
-   - Window statistics: `rolling_mean_3h`, `rolling_mean_6h`, `rolling_mean_12h`, `rolling_mean_24h`.
-   - Volatility indicators: `rolling_std_6h`, `rolling_std_24h`, `rolling_min_24h`, `rolling_max_24h`.
-5. **Physical Meteorological Proxies**:
-   - Wind U/V Vector Decomposition: $u = -v_{\text{wind}} \cdot \sin(\theta)$, $v = -v_{\text{wind}} \cdot \cos(\theta)$.
-   - Apparent Temperature Proxy (Heat Index proxy accounting for vapor pressure and thermal stress).
+### 4.1 Per-City Grouped Feature Engineering (152 Features)
+In [feature_engineering.py](src/pipeline/feature_engineering.py), all lag, difference, rolling, and target shift operations execute strictly **per city** (`groupby("city")`) to prevent cross-city spillover:
+1. **Geolocation Context**: `city_lat`, `city_lon`, `city_elevation_m` (enables one unified multi-city model to distinguish Quetta at 1,680m from coastal Karachi at 8m).
+2. **Time & Cyclical Harmonics**: `hour`, `day`, `month`, `day_of_week`, `is_weekend`, `day_of_year`, plus $\sin/\cos$ encodings for hour, month, and day-of-year.
+3. **Backward Lags**: `lag_1h`, `lag_2h`, `lag_3h`, `lag_6h`, `lag_12h`, `lag_24h` across all 7 meteorological & pollutant channels.
+4. **Rate-of-Change (First Differences)**: $\Delta_{1h}$, $\Delta_{3h}$, $\Delta_{24h}$.
+5. **Causal Rolling Statistics**: `rolling_mean` (3h, 6h, 12h, 24h), `rolling_std` (6h, 24h), `rolling_min_24h`, `rolling_max_24h`.
+6. **Physical Proxies**: Wind U/V vector decomposition ($u = -v\sin\theta$, $v = -v\cos\theta$), Apparent Temperature (heat-index proxy), and ordinal AQI severity tier.
 
-### 4.2 Target Shift
-In strict conformance with Section 4 of the specification:
-$$y_{t, m} = x_{t + 24, m}$$
-Observations are shifted backward by 24 hours such that features at timestamp $t$ are aligned with ground-truth values at $t + 24$. The most recent 24 hours contain null targets and are reserved exclusively for live 24h-ahead inference.
+### 4.2 Target Shift & Inference Tail
+Targets are constructed strictly per city via $y_{t, m} = x_{t + 24, m}$ (`shift(-24)`). The initial 24-hour warmup window (`lag_24h` NaN) is dropped before training, and the newest 24 hours (where `target_*` is NaN) are reserved exclusively for live 24h-ahead forecasting. Redundant duplicate `us_aqi` is excluded from input features.
 
 ---
 
-## 5. Model Selection, Training, & Leaderboard Evaluation
+## 5. Zero-Leakage Training, Embargo Split & Benchmark Results
 
-### 5.1 Time-Based Split Protocol
-To mirror production conditions and eliminate lookahead bias, data is partitioned chronologically:
-- **Training Set (80%)**: Earlier 1,764 hourly observations.
-- **Validation Set (20%)**: Latest 442 hourly observations.
+### 5.1 Global 24-Hour Embargoed Split
+To prevent both **temporal boundary leakage** and **cross-city synoptic weather leakage**, [train.py](src/pipeline/train.py) enforces a single global calendar cutoff across all 8 cities with a **24-hour purge/embargo gap**:
+- **Training Fold (80%)**: `112,064` rows (`2024-11-21 00:00` → `2026-06-30 06:00`)
+- **Purged Embargo Gap**: `24 hours` (`2026-06-30 07:00` → `2026-07-01 05:00`) — guarantees $\max(t_{\text{train}} + 24\text{h}) \le \min(t_{\text{val}})$
+- **Validation Fold (20%)**: `27,888` rows (`2026-07-01 06:00` → `2026-11-23 20:00`)
 
-### 5.2 Model Families Evaluated
-For every metric, four candidate models from three families plus a Naive Persistence Baseline were benchmarked:
-1. **Naive Baseline (24h Persistence)**: Forecasts that the value 24 hours from now equals the value observed today ($x_{t+24} \approx x_t$).
-2. **Statistical Family**: AutoRegressive Ordinary Least Squares (`AutoReg_OLS`).
-3. **Classical ML Family**:
-   - L2 Regularized Ridge Regression (`Ridge_Regression`).
-   - Random Forest Regressor (`Random_Forest`, 100 estimators, max depth 12).
-   - Gradient Boosted Decision Trees (`XGBoost`, 120 trees, learning rate 0.08).
-4. **Deep Learning Family**: Multi-Layer Perceptron Neural Network (`Neural_Network_MLP`, 64-32 architecture, ReLU activation, Adam optimizer, early stopping).
+### 5.2 Model Families Evaluated (30 Models Total)
+1. **Naive Baseline**: 24-hour Persistence ($y_{t+24} = y_t$)
+2. **Statistical**: `statsmodels` **SARIMAX** (`order=(2,0,0)`, exogenous lags + Fourier harmonics, MLE)
+3. **Classical ML**: **Ridge Regression** (`Pipeline[StandardScaler, Ridge]`), **Random Forest** (`n_estimators=80, max_features="sqrt"`), **XGBoost** (`n_estimators=150, max_depth=5`)
+4. **Deep Learning**: **PyTorch LSTM** (`torch.nn.LSTM` over 7-step × 6-channel chronological tensors `[t-24h, t-12h, t-6h, t-3h, t-2h, t-1h, t]` fused with cyclical/geolocation embeddings, trained with HuberLoss & Adam)
 
-### 5.3 Benchmark Leaderboard Results
+### 5.3 Verified Zero-Leakage Champion Leaderboard
 
-| Metric | Champion Model | Champion Family | Val RMSE | Val MAE | Val $R^2$ | Naive Baseline RMSE | Beat Baseline? |
-| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| **AQI** | `Neural_Network_MLP` | **Deep Learning** | **27.25** | **21.75** | **0.326** | 31.63 | **YES (+13.9% improvement)** |
-| **Temperature (°C)** | `Ridge_Regression` | **Classical ML** | **1.27** | **0.98** | **0.904** | 0.83* | Near-baseline strong $R^2$ |
-| **Precipitation (mm)**| `AutoRegressive_OLS` | **Statistical** | **0.048** | **0.047** | -9.35 | 0.021 | Statistical stability |
-| **Humidity (%)** | `Random_Forest` | **Classical ML** | **5.06** | **4.10** | **0.882** | 5.22 | **YES (+3.1% improvement)** |
-| **UV Index** | `XGBoost` | **Classical ML** | **0.23** | **0.11** | **0.965** | 0.23 | **YES ($R^2 = 0.965$)** |
-| **Wind Speed (km/h)**| `XGBoost` | **Classical ML** | **2.05** | **1.60** | -0.006 | 2.83 | **YES (+27.3% improvement)** |
+| Metric | Champion Model | Family | Val RMSE | Val MAE | Val $R^2$ | Naive Baseline RMSE | Baseline $R^2$ | Improvement vs Baseline |
+| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **AQI** | `XGBoost` | Classical ML | **18.8051** | **14.0996** | **0.7975** | 22.6658 | 0.7058 | **-17.0% RMSE ✅** |
+| **Temperature (°C)** | `PyTorch_LSTM` | Deep Learning | **1.4161** | **1.0214** | **0.9432** | 1.5791 | 0.9293 | **-10.3% RMSE ✅** |
+| **Precipitation (mm)** | `Ridge_Regression` | Classical ML | **0.5125** | **0.1403** | **0.0365** | 0.7111 | -0.8546 | **-27.9% RMSE ✅** |
+| **Humidity (%)** | `XGBoost` | Classical ML | **8.7198** | **6.0862** | **0.8294** | 9.8183 | 0.7837 | **-11.2% RMSE ✅** |
+| **UV Index** | `XGBoost` | Classical ML | **0.4625** | **0.1906** | **0.9627** | 0.5245 | 0.9520 | **-11.8% RMSE ✅** |
+| **Wind Speed (km/h)** | `PyTorch_LSTM` | Deep Learning | **2.8416** | **2.1855** | **0.5201** | 3.5486 | 0.2515 | **-19.9% RMSE ✅** |
 
-*All three families (Deep Learning, Classical ML, and Statistical) earned champion placements across the six metrics, confirming the necessity of multi-family benchmarking.*
+**All 6/6 champion models strictly outperform the 24-hour naive baseline**, with both **Deep Learning (`PyTorch_LSTM`)** and **Classical ML (`XGBoost`, `Ridge`)** winning championships, and **`statsmodels` SARIMAX** converging cleanly via MLE across all metrics (e.g., `UV R² = 0.9560`, `Humidity R² = 0.7549`, `Wind R² = 0.4359`, `AQI R² = 0.3627`).
 
 ---
 
-## 6. Model Explainability Analysis (SHAP & LIME)
+## 6. Model Explainability (SHAP & LIME)
 
-Explainability was implemented through TreeExplainer, LinearExplainer, and LIME Tabular Explainer modules:
-1. **Air Quality Index (AQI) Drivers**:
-   - `aqi_lag_24h` and `aqi_rolling_mean_24h` contributed 42% of global feature importance, demonstrating multi-day particulate persistence.
-   - `wind_speed_kmh` exhibited a strong negative SHAP value: low wind speeds ($< 5\text{ km/h}$) consistently pushed predicted AQI higher by $+15$ to $+30$ points due to atmospheric stagnation and boundary-layer trapping.
-   - `humidity_pct` showed positive attribution to AQI during nocturnal hours, reflecting hygroscopic growth of aerosol particles.
-2. **Temperature Drivers**:
-   - `hour_sin` and `hour_cos` accounted for 35% of importance, capturing diurnal solar irradiance.
-   - `temperature_c_lag_24h` served as the primary baseline anchor.
-3. **Local Waterfall Attribution**:
-   - The interactive dashboard allows inspectors to examine any individual forecast instance to see which features drove the prediction above or below the baseline expected value.
+Implemented in [explainability.py](src/pipeline/explainability.py) and surfaced interactively in the dashboard:
+- **Global Feature Importance**: Native tree/linear importances for `XGBoost`/`Ridge`/`SARIMAX`, and input-permutation sensitivity across sequence & context channels for `PyTorch_LSTM`.
+- **Local SHAP Attribution**: `TreeExplainer` for XGBoost champions and `PermutationExplainer` for PyTorch LSTM / Ridge champions — showing exact feature pushes above/below expected baseline.
+- **Local LIME Attribution**: `LimeTabularExplainer` generating human-readable local threshold rules (e.g., `aqi > 177.00 -> +29.6`, `pm2_5 > 86.10 -> +23.2` for Lahore smog; `apparent_temp_proxy <= 19.18 -> -5.7°C` for winter cooling).
 
 ---
 
-## 7. LangGraph Agentic Reasoning Architecture
+## 7. LangGraph Agentic Reasoning Layer & Performance
 
-The reasoning layer is orchestrated as a four-node directed state graph using **LangGraph**:
-
+Orchestrated as a single four-node `StateGraph` in [graph.py](src/agents/graph.py):
 ```
 [START] ──> [Forecast Agent] ──> [Alert Agent] ──> [Weather Report Agent] ──> [Drift Agent] ──> [END]
 ```
 
-### 7.1 Forecast Agent
-- Queries `FeatureStoreManager` for the latest feature record.
-- Invokes the active champion models from `ModelRegistry`.
-- Logs generated forecasts into the `forecast_ledger` SQLite table.
-- Builds a 24-hour diurnal trajectory curve for downstream visualization.
+1. **Forecast Agent** ([forecast_agent.py](src/agents/forecast_agent.py)): Loads latest per-city engineered features and active champions from `ModelRegistry`, produces 24h-ahead predictions + 24h diurnal trajectory, logs every forecast into `forecast_ledger`, and passes state downstream.
+2. **Alert Agent** ([alert_agent.py](src/agents/alert_agent.py)): Evaluates fixed rule-based hazard thresholds across all 6 metrics (AQI, Heat/Cold, Heavy Rain/Flash Flood, Extreme UV, Gale Wind, Oppressive Humidity) and generates structured safety advisories tailored for **General Public**, **Sensitive Groups**, and **Outdoor Workers**.
+3. **Weather Report Agent** ([weather_report_agent.py](src/agents/weather_report_agent.py)): Synthesizes forecasts and triggered alerts into a broadcast-ready newsroom weather script.
+4. **Drift Agent** ([drift_agent.py](src/agents/drift_agent.py)):
+   - **Data Drift**: Two-sample Kolmogorov-Smirnov test ($p < 0.05$) + Population Stability Index (PSI) comparing live 48h window vs reference window.
+   - **Model Drift**: Compares recent forecast ledger MAE against validation MAE (triggers if error rises $> 25\%$).
+   - **Autonomous Retraining**: Logs every drift check to `drift_log`; when breached, fires GitHub Actions `repository_dispatch` (`drift_alert_retrain`) or runs `train_and_evaluate_pipeline()` directly in CLI/CI mode (`allow_retrain=True`) while staying non-blocking in the live web dashboard.
 
-### 7.2 Alert Agent
-- Evaluates fixed rule-based hazard thresholds:
-  - **AQI**: Moderate (100), Unhealthy (150), Very Unhealthy (200), Hazardous (300).
-  - **Temperature**: Cold Warning ($\le 3^\circ\text{C}$), Heat Advisory ($\ge 38^\circ\text{C}$), Extreme Heat ($\ge 42^\circ\text{C}$).
-  - **Precipitation**: Heavy Rain ($\ge 6\text{ mm}$), Flash Flood Risk ($\ge 15\text{ mm}$).
-  - **UV Index**: Very High ($\ge 8$), Extreme ($\ge 11$).
-  - **Wind**: High Wind ($\ge 35\text{ km/h}$), Gale Force ($\ge 50\text{ km/h}$).
-  - **Humidity**: Oppressive Heat Index ($\ge 80\%$ with temp $\ge 32^\circ\text{C}$).
-- When triggered, invokes the LLM (Groq `llama-3.3-70b-versatile` with rule-based fallback) to format tailored advisories for:
-  1. **General Public** (travel timing, window sealing, air purification).
-  2. **Sensitive Groups** (children, asthmatics, elderly: medication access, zero outdoor exertion).
-  3. **Outdoor Workers** (laborers, couriers, police: mandatory 15-min rest per 45-min work, 1L hydration/2h, N95 respirators).
-
-### 7.3 Weather Report Agent
-- Synthesizes 24-hour predictions, diurnal transitions, and active hazard bulletins into a professional TV/radio news broadcast script.
-- Features resilient deterministic template fallback for offline operation.
-
-### 7.4 Drift Agent
-- Conducts statistical Data Drift analysis using the Kolmogorov-Smirnov test and Population Stability Index.
-- Compares recent forecast errors against validation MAE for Model Drift.
-- If drift crosses threshold ($p < 0.05$ or error increase $> 25\%$), dispatches `train_and_evaluate_pipeline()` to automatically retrain models.
+### LLM Client Reliability & Failure Auditing
+[llm_client.py](src/agents/llm_client.py) wraps Groq (`llama-3.3-70b-versatile`) with millisecond latency tracking, 3-second timeout guard, and deterministic meteorological template fallbacks. Every call (whether `SUCCESS`, `FALLBACK_USED`, or `FAILED_API_ERROR`) is persisted in `agent_call_log`, and failed calls are surfaced in the dashboard's **Failed Agent Calls Audit Log**.
 
 ---
 
-## 8. MLOps Telemetry & Drift Monitoring
+## 8. Issues Encountered, Audits & Engineering Fixes
 
-AgentWeather maintains full telemetry across three persistent tables:
-1. **Forecast Ledger**: Stores `target_time`, `city`, `metric`, `forecast_value`, `naive_baseline_value`, `model_family`, `model_name`, `actual_value`, and `forecast_error`.
-2. **Agent Call Log**: Tracks `agent_name`, `prompt`, `response`, `latency_ms`, `status` (`SUCCESS`, `FALLBACK_USED`, `FAILED_API_ERROR`), and `model_used`.
-3. **Drift Log**: Records `metric`, `drift_type` (`DATA_DRIFT`, `MODEL_DRIFT`, `SYSTEM_ACTION`), `score`, `threshold`, `drift_detected`, and `action_taken`.
-
-### Automated Retraining Trigger
-During the live test cycle, the Drift Agent identified significant seasonal distribution divergence in live features ($p < 0.05$). The agent autonomously initiated an automated training cycle, refreshed all six model families, and updated the Model Registry without human intervention.
-
----
-
-## 9. Issues, Fixes, & Failure Recovery
-
-| Challenge / Failure Mode | Root Cause | Engineering Solution & Resolution |
+| Issue / Root Cause | Impact | Engineering Fix & Verification |
 | :--- | :--- | :--- |
-| **LLM Network Timeout / API Limits** | Groq rate-limiting or absent API credentials. | Designed `LLMClient` with millisecond latency logging and deterministic meteorological template fallbacks. All LLM calls log to `agent_call_log` with failure audits. |
-| **High Feature Fragmentation** | Iteratively inserting 150+ columns into Pandas DataFrame. | Batch-computed all lag and rolling statistical blocks, using vector operations to eliminate fragmentation warnings. |
-| **Missing Ground Truth in Newest 24h** | Forward-looking targets $t+24$ do not yet exist for the latest 24 hours. | Cleanly segmented feature store: rows with complete targets are used for training/validation, while the newest 24 hours with NaN targets are reserved exclusively for live inference. |
-| **Dependency Resolution** | Hopsworks requiring `pandas < 2.4.0` while other packages requested newer releases. | Standardized on `pandas 2.2.3` and pinned compatible versions of `avro`, `fsspec`, `boto3`, and `sqlalchemy`. |
+| **1. Imputation Leakage** (`interpolate(limit_direction="both")` + full-dataset medians) | Future rows leaked into past imputed values before train/val split | Replaced with strictly causal `ffill(limit=3)` + `expanding().median().shift(1)` + train-only medians. Verified `0.0` diff under future perturbation. |
+| **2. Train/Val 24h Boundary Overlap & Cross-City Synoptic Leakage** | Last 24h train targets overlapped val inputs; different city start dates overlapped calendar days | Implemented global calendar cutoff + strict 24h embargo gap ($\max(t_{\text{train}}+24\text{h}) \le \min(t_{\text{val}})$) with hard assertion. |
+| **3. Forecast-as-Ground-Truth Contamination** | `fetch_live_recent(forecast_hours=24)` saved Open-Meteo predictions into `raw_observations` | Set `forecast_hours=0`, tagged `time > now` as `open_meteo_forecast`, excluded from training & purged old forecast tails. |
+| **4. Stale Registry Comparisons** | Old 21-Nov small-split RMSE blocked newer 2-year champions & accumulated 245 duplicate rows | Added `registry.reset_registry()` for clean full benchmarks + Hopsworks Model Registry cloud upload support. |
+| **5. SARIMAX Constant Column Collision** | Static `city_elevation_m` collided with `trend='c'` in single-city slice | Removed static column from SARIMAX exog & sampled across full chronological span — MLE converged cleanly on all 6 metrics. |
+| **6. SHAP Sampling Crash & Dashboard Latency** | `dropna().sample(50)` raised `ValueError`; EDA/Drift scanned 140K SQLite rows per render; indented HTML rendered as code blocks | Safe `fillna(0.0)` sampling, parquet direct reads (`0.03s`), `limit=500` drift queries, flat HTML strings, and `@st.cache_data` on SHAP/LIME. |
 
 ---
 
-## 10. Automated CI/CD & Deployment Instructions
+## 9. Automated CI/CD & Cloud Deployment
 
-### 10.1 GitHub Actions Pipelines
-- **Hourly Feature Ingestion (`.github/workflows/feature_ingestion.yml`)**: Triggered at `cron: '0 * * * *'` to ingest new hourly weather/pollutant data, compute features, and execute the LangGraph reasoning cycle.
-- **Daily & Drift Retraining (`.github/workflows/training_pipeline.yml`)**: Triggered at `cron: '0 0 * * *'` and on repository dispatch when drift is flagged.
-
-### 10.2 Running the Dashboard Locally
-```bash
-# 1. Activate conda environment
-conda activate web_scraping
-
-# 2. Launch Streamlit application
-streamlit run app.py
-```
-
-### 10.3 Deploying to Streamlit Community Cloud
-1. Push the repository to GitHub.
-2. Link repository on [share.streamlit.io](https://share.streamlit.io).
-3. Set entry point to `app.py`.
-4. Add any optional secrets (`GROQ_API_KEY`, `HOPSWORKS_API_KEY`) under App Settings -> Secrets.
-
----
-*Report Prepared for 10Pearls SHINE Internship Cohort 10 Evaluation Committee.*
-
+- **Hourly Ingestion & Agents**: [.github/workflows/feature_ingestion.yml](.github/workflows/feature_ingestion.yml) (`cron: '0 * * * *'`, passes `GITHUB_TOKEN` for drift dispatch).
+- **Daily & Drift-Triggered Training**: [.github/workflows/training_pipeline.yml](.github/workflows/training_pipeline.yml) (`cron: '0 0 * * *'` + `repository_dispatch: [drift_alert_retrain]`).
+- **Dual Feature Store & Model Registry**: Local SQLite/Parquet zero-config engine + **Hopsworks Cloud Feature Store & Model Registry** ([hopsworks_store.py](src/pipeline/hopsworks_store.py)) activated automatically when `HOPSWORKS_API_KEY` is provided.
+- **Dashboard Deployment (Streamlit Community Cloud)**:
+  - Repository: `https://github.com/ZubairHamiid/SkySense-AI`
+  - Entry point: `app.py`
+  - Live URL: *(Deploy at [share.streamlit.io](https://share.streamlit.io) and paste live URL here)*
