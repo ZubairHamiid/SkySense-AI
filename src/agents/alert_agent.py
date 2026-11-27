@@ -165,7 +165,7 @@ def generate_deterministic_alert_fallback(hazards: List[Dict[str, Any]], city: s
     """Condition-aware rule-based safety advisory tailored specifically to the active hazards."""
     if not hazards:
         return (
-            f"🟢 NORMAL CONDITIONS FOR {city.upper()}:\n"
+            f"NORMAL CONDITIONS — {city.upper()}:\n"
             "All predicted weather and air quality parameters are within standard, safe thresholds. "
             "No active meteorological hazards are projected for the next 24 hours."
         )
@@ -222,12 +222,12 @@ def generate_deterministic_alert_fallback(hazards: List[Dict[str, Any]], city: s
         work_lines.append("- Increase cooling/electrolyte intervals to offset reduced sweat evaporation.")
 
     return (
-        f"🚨 METEOROLOGICAL HAZARD ALERT FOR {city.upper()}\n"
+        f"METEOROLOGICAL HAZARD ALERT — {city.upper()}\n"
         "==================================================\n"
         f"Active Hazard Triggers:\n{hazard_summary}\n\n"
-        "1. 👥 GUIDANCE FOR THE GENERAL PUBLIC:\n" + "\n".join(pub_lines) + "\n\n"
-        "2. 🫁 GUIDANCE FOR SENSITIVE GROUPS (Asthmatics, Elderly, Children):\n" + "\n".join(sens_lines) + "\n\n"
-        "3. 👷 GUIDANCE FOR OUTDOOR WORKERS (Laborers, Delivery Riders, Police):\n" + "\n".join(work_lines) + "\n"
+        "1. GENERAL PUBLIC:\n" + "\n".join(pub_lines) + "\n\n"
+        "2. SENSITIVE GROUPS (Asthmatics, Elderly, Children):\n" + "\n".join(sens_lines) + "\n\n"
+        "3. OUTDOOR WORKERS (Laborers, Delivery Riders, Field Staff):\n" + "\n".join(work_lines) + "\n"
     )
 
 

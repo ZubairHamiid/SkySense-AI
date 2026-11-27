@@ -162,7 +162,7 @@ class ModelRegistry:
                 "Baseline RMSE": item["baseline_metrics"]["rmse"],
                 "Baseline MAE": item["baseline_metrics"]["mae"],
                 "Beat Baseline?": "YES" if item["val_metrics"]["rmse"] < item["baseline_metrics"]["rmse"] else "NO",
-                "Champion": "🏆 YES" if is_champ else "NO",
+                "Champion": "YES" if is_champ else "NO",
                 "Evaluated At": item["registered_at"][:19].replace("T", " ")
             })
         if not rows:

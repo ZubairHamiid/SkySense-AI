@@ -24,22 +24,37 @@ def get_aqi_badge_color(aqi: float) -> Tuple[str, str, str]:
         return "Hazardous", "#e11d48", "#ffffff"
 
 
-def get_weather_icon_and_desc(temp: float, aqi: float, rain: float, wind: float) -> Tuple[str, str]:
-    """Generates weather icon emoji and descriptive text matching reference designs."""
+def _svg_icon(kind: str, size: int = 22, color: str = "#e2e8f0") -> str:
+    """Returns clean, minimalist inline SVG icons (zero Unicode emojis)."""
+    icons = {
+        "storm": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 16.9A5 5 0 0 0 18 7h-1.26a8 8 0 1 0-11.62 9"/><polyline points="13 11 9 17 15 17 11 23"/></svg>',
+        "rain": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 16.2A4.5 4.5 0 0 0 17.5 8h-1.8A7 7 0 1 0 4 14.9"/><line x1="8" y1="19" x2="8" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><line x1="16" y1="19" x2="16" y2="21"/></svg>',
+        "smog": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h16"/><path d="M6 18h12"/><path d="M8 10h8"/><path d="M17.5 10a4.5 4.5 0 0 0-8.6-1.8A3.5 3.5 0 0 0 5 11.5"/></svg>',
+        "haze": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="4"/><path d="M3 16h18"/><path d="M5 20h14"/></svg>',
+        "sun": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>',
+        "wind": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/></svg>',
+        "cloud": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>',
+        "pin": f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+    }
+    return icons.get(kind, icons["cloud"])
+
+
+def get_weather_icon_and_desc(temp: float, aqi: float, rain: float, wind: float, icon_size: int = 26) -> Tuple[str, str]:
+    """Generates clean minimalist SVG weather icon and descriptive text (zero emojis)."""
     if rain > 1.0:
-        return "⛈️", "Stormy with Rain Showers"
+        return _svg_icon("storm", icon_size, "#38bdf8"), "Stormy with Rain Showers"
     elif rain > 0.1:
-        return "🌧️", "Overcast with Light Rain"
+        return _svg_icon("rain", icon_size, "#38bdf8"), "Overcast with Light Rain"
     elif aqi > 200:
-        return "🌫️", "Dense Smog & Hazardous Air"
+        return _svg_icon("smog", icon_size, "#a855f7"), "Dense Smog & Hazardous Air"
     elif aqi > 120:
-        return "🌤️", "Hazy Sunshine & Particulate Smog"
+        return _svg_icon("haze", icon_size, "#f59e0b"), "Hazy Sky & Particulate Smog"
     elif temp > 32:
-        return "☀️", "Clear Sky & High Solar Radiation"
+        return _svg_icon("sun", icon_size, "#f59e0b"), "Clear Sky & High Solar Radiation"
     elif wind > 20:
-        return "💨", "Breezy & Active Wind Currents"
+        return _svg_icon("wind", icon_size, "#38bdf8"), "Breezy & Active Wind Currents"
     else:
-        return "⛅", "Partly Cloudy with Mild Breeze"
+        return _svg_icon("cloud", icon_size, "#cbd5e1"), "Partly Cloudy with Mild Breeze"
 
 
 def inject_cinematic_theme_css():
@@ -345,34 +360,34 @@ def render_hourly_cards_html(df_trajectory: pd.DataFrame) -> str:
         temp = float(row.get("temperature_c", 20.0))
         aqi = float(row.get("aqi", 100.0))
         rain = float(row.get("precipitation_mm", 0.0))
-        icon, _ = get_weather_icon_and_desc(temp, aqi, rain, 5.0)
+        icon, _ = get_weather_icon_and_desc(temp, aqi, rain, 5.0, icon_size=22)
         active_class = "active" if idx == 0 else ""
         cards_html.append(
             f'<div class="hourly-pill {active_class}">'
             f'<div style="font-size:0.75rem;color:#94a3b8;font-family:\'JetBrains Mono\';font-weight:600;">{t}</div>'
-            f'<div style="font-size:1.5rem;margin:6px 0;">{icon}</div>'
+            f'<div style="display:flex;justify-content:center;align-items:center;margin:8px 0;">{icon}</div>'
             f'<div style="font-size:1rem;font-weight:700;color:#ffffff;">{temp:.0f}°</div>'
-            f'<div style="font-size:0.68rem;color:#38bdf8;margin-top:2px;">{rain:.1f}mm</div>'
+            f'<div style="font-size:0.68rem;color:#38bdf8;margin-top:2px;">{rain:.1f} mm</div>'
             f'</div>'
         )
     return '<div class="hourly-scroll-container">' + "".join(cards_html) + '</div>'
 
 
 def render_city_chips_html(cities_meta: Dict[str, Dict[str, Any]], active_city: str) -> str:
-    """Renders the 'Recently Searched / Major Cities' cards on the side matching Image 1. No leading whitespace to prevent markdown code blocks."""
+    """Renders the 'Recently Searched / Major Cities' cards on the side matching Image 1. No leading whitespace."""
     chips_html = []
     
     for cname, cdata in list(cities_meta.items())[:4]:
         temp = cdata.get("temp", 22.0)
         aqi = cdata.get("aqi", 110)
-        icon, desc = get_weather_icon_and_desc(temp, aqi, 0.0, 5.0)
+        icon, desc = get_weather_icon_and_desc(temp, aqi, 0.0, 5.0, icon_size=22)
         is_active = (cname.lower() == active_city.lower())
         border_style = "border-color:rgba(56,189,248,0.6);background:rgba(56,189,248,0.1);" if is_active else ""
         province = cdata.get("province", "Pakistan")
         chips_html.append(
             f'<div class="city-chip-card" style="{border_style}">'
             f'<div style="display:flex;align-items:center;gap:12px;">'
-            f'<span style="font-size:1.4rem;">{icon}</span>'
+            f'<span style="display:inline-flex;align-items:center;">{icon}</span>'
             f'<div>'
             f'<div style="font-weight:700;color:#ffffff;font-size:0.95rem;">{cname}</div>'
             f'<div style="font-size:0.72rem;color:#94a3b8;">{province}</div>'
@@ -499,10 +514,10 @@ def render_left_panel_html(
         '<div style="font-size:0.7rem;color:#94a3b8;margin-top:6px;">PM2.5 / PM10 EPA</div>'
         '</div></div></div>'
         '<div style="margin-bottom:20px;">'
-        f'<div style="font-size:0.8rem;color:#94a3b8;font-weight:600;text-transform:uppercase;margin-bottom:10px;">Targeted Advisories — {selected_city}</div>'
-        f'<div style="background:rgba(59,130,246,0.08);border-left:3px solid {pub_col};border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:0.8rem;color:#e2e8f0;"><b>👥 Public:</b> {pub_adv}</div>'
-        f'<div style="background:rgba(245,158,11,0.08);border-left:3px solid {sens_col};border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:0.8rem;color:#e2e8f0;"><b>🫁 Sensitive:</b> {sens_adv}</div>'
-        f'<div style="background:rgba(239,68,68,0.08);border-left:3px solid {work_col};border-radius:8px;padding:10px 12px;font-size:0.8rem;color:#e2e8f0;"><b>👷 Workers:</b> {work_adv}</div>'
+        f'<div style="font-size:0.76rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Targeted Advisories — {selected_city}</div>'
+        f'<div style="background:rgba(59,130,246,0.08);border-left:3px solid {pub_col};border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:0.8rem;color:#e2e8f0;"><span style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:2px;">General Public</span>{pub_adv}</div>'
+        f'<div style="background:rgba(245,158,11,0.08);border-left:3px solid {sens_col};border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:0.8rem;color:#e2e8f0;"><span style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:2px;">Sensitive Groups</span>{sens_adv}</div>'
+        f'<div style="background:rgba(239,68,68,0.08);border-left:3px solid {work_col};border-radius:8px;padding:10px 12px;font-size:0.8rem;color:#e2e8f0;"><span style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:2px;">Outdoor Workers</span>{work_adv}</div>'
         '</div>'
         '<div>'
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
@@ -544,29 +559,30 @@ def render_hero_header_html(
     climate = city_info.get('climate', 'Continental')
     compass = degrees_to_compass(wind_dir_deg)
 
+    pin_svg = _svg_icon("pin", 16, "#38bdf8")
     html = (
         '<div class="hero-glass-frame">'
         '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:12px;">'
         '<div style="display:flex;align-items:center;gap:8px;">'
-        '<span style="font-size:1.1rem;color:#38bdf8;">📍</span>'
+        f'<span style="display:inline-flex;align-items:center;">{pin_svg}</span>'
         f'<span style="font-size:1.15rem;font-weight:700;color:#f8fafc;">{selected_city}, {province}, Pakistan</span>'
         f'<span style="color:#64748b;font-size:0.9rem;">({now_str})</span>'
         '</div>'
-        f'<div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:9999px;padding:4px 14px;font-size:0.78rem;color:#94a3b8;">Elevation: {elevation}m • {climate}</div>'
+        f'<div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:9999px;padding:4px 14px;font-size:0.78rem;color:#94a3b8;">Elevation: {elevation}m &middot; {climate}</div>'
         '</div>'
         '<div style="display:flex;align-items:baseline;gap:24px;flex-wrap:wrap;">'
         f'<div class="hero-temp-title">{temp_val:.0f}°</div>'
-        f'<div style="color:#94a3b8;font-size:1.1rem;font-weight:600;font-family:\'JetBrains Mono\';">H <span style="color:#ffffff;">{high_temp:.0f}°</span> &nbsp;•&nbsp; L <span style="color:#ffffff;">{low_temp:.0f}°</span></div>'
+        f'<div style="color:#94a3b8;font-size:1.1rem;font-weight:600;font-family:\'JetBrains Mono\';">H <span style="color:#ffffff;">{high_temp:.0f}°</span> &nbsp;&middot;&nbsp; L <span style="color:#ffffff;">{low_temp:.0f}°</span></div>'
         '</div>'
-        '<div class="hero-condition-text">'
-        f'<span style="font-size:2.2rem;margin-right:8px;vertical-align:middle;">{weather_icon}</span><b>{weather_desc}</b>'
+        '<div class="hero-condition-text" style="display:flex;align-items:center;gap:12px;">'
+        f'<span style="display:inline-flex;align-items:center;">{weather_icon}</span><span><b>{weather_desc}</b></span>'
         '</div>'
         '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
-        f'<div class="stat-pill">💨 Wind: <b>{wind_val:.1f} km/h ({compass} {wind_dir_deg:.0f}°)</b></div>'
-        f'<div class="stat-pill">💧 Humidity: <b>{humidity_val:.0f}%</b></div>'
-        f'<div class="stat-pill">🌧️ Precip: <b>{rain_val:.1f} mm ({rain_prob_pct:.0f}%)</b></div>'
-        f'<div class="stat-pill">☀️ UV Index: <b>{uv_val:.1f}</b></div>'
-        f'<div class="stat-pill">🔘 Air Quality: <b>{aqi_val:.0f} AQI</b></div>'
+        f'<div class="stat-pill"><span style="color:#94a3b8;font-size:0.72rem;font-weight:700;letter-spacing:0.05em;">WIND</span> <b>{wind_val:.1f} km/h ({compass} {wind_dir_deg:.0f}°)</b></div>'
+        f'<div class="stat-pill"><span style="color:#94a3b8;font-size:0.72rem;font-weight:700;letter-spacing:0.05em;">HUMIDITY</span> <b>{humidity_val:.0f}%</b></div>'
+        f'<div class="stat-pill"><span style="color:#94a3b8;font-size:0.72rem;font-weight:700;letter-spacing:0.05em;">PRECIP</span> <b>{rain_val:.1f} mm ({rain_prob_pct:.0f}%)</b></div>'
+        f'<div class="stat-pill"><span style="color:#94a3b8;font-size:0.72rem;font-weight:700;letter-spacing:0.05em;">UV INDEX</span> <b>{uv_val:.1f}</b></div>'
+        f'<div class="stat-pill"><span style="color:#94a3b8;font-size:0.72rem;font-weight:700;letter-spacing:0.05em;">AQI</span> <b>{aqi_val:.0f}</b></div>'
         '</div>'
         '</div>'
     )

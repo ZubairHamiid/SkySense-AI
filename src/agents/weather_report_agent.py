@@ -25,21 +25,21 @@ def generate_deterministic_report_fallback(forecast_24h: dict, alerts: list, cit
     alert_section = ""
     if alerts:
         alert_titles = ", ".join([a["title"] for a in alerts])
-        alert_section = f"\n\n🚨 CRITICAL ADVISORY: Authorities and residents should note active alerts: {alert_titles}. Please take necessary safety precautions."
+        alert_section = f"\n\nCRITICAL ADVISORY: Authorities and residents should note active alerts: {alert_titles}. Please take necessary safety precautions."
     else:
-        alert_section = "\n\n🟢 MUNICIPAL NOTICE: No severe weather or air-hazard warnings are currently in effect."
+        alert_section = "\n\nMUNICIPAL NOTICE: No severe weather or air-hazard warnings are currently in effect."
         
-    return f"""🎙️ AGENTWEATHER 24-HOUR BROADCAST BULLETIN
+    return f"""SKYSENSE AI — 24-HOUR METEOROLOGICAL BROADCAST BULLETIN
 City: {city.upper()} | Broadcast Date: {now_str}
 ========================================================================
 
-"Good day, {city}! This is your 24-hour AgentWeather newsroom briefing powered by our agentic forecasting engine.
+Good day, {city}. This is your 24-hour SkySense AI newsroom briefing powered by our multi-agent forecasting engine.
 
-Looking at the meteorological radar over the next 24 hours, temperatures will hold around {temp:.1f}°C, accompanied by a relative humidity of {hum:.0f}%. Winds are forecasted to breeze across the metropolitan basin at {wind:.1f} km/h, while daytime peak solar UV exposure will register an index of {uv:.1f}. On the precipitation front, {rain_desc}.
+Looking at the meteorological outlook over the next 24 hours, temperatures will hold around {temp:.1f}°C, accompanied by a relative humidity of {hum:.0f}%. Winds are forecasted across the metropolitan basin at {wind:.1f} km/h, while peak solar UV exposure will register an index of {uv:.1f}. On the precipitation front, {rain_desc}.
 
-Turning to our environmental index, the Air Quality Index (AQI) is projected at {aqi:.0f}, placing regional atmospheric conditions into the '{aqi_status}' category. Citizens sensitive to airborne particulates should plan accordingly.{alert_section}
+Turning to air quality, the Air Quality Index (AQI) is projected at {aqi:.0f}, placing regional atmospheric conditions in the '{aqi_status}' category. Residents sensitive to airborne particulates should plan accordingly.{alert_section}
 
-Stay safe, stay informed, and keep your AgentWeather dashboard close as our agents continue hourly surveillance of the skies!"
+Stay safe and informed as SkySense AI continues hourly atmospheric surveillance.
 """
 
 
