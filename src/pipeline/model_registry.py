@@ -39,6 +39,15 @@ class ModelRegistry:
         with open(self.metadata_path, "w") as f:
             json.dump(self.metadata, f, indent=2)
 
+    def reset_registry(self):
+        """
+        Resets champions and evaluation history before a fresh clean benchmark run,
+        ensuring models evaluated on different/older splits never pollute champion selection.
+        """
+        self.metadata = {"champions": {}, "history": []}
+        self._save_metadata()
+        logger.info("Model Registry metadata reset for clean benchmark evaluation.")
+
     def evaluate_model(self, y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
         """Calculates RMSE, MAE, and R² for predictions."""
         # Filter out any NaN values

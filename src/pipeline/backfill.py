@@ -35,9 +35,10 @@ def run_backfill(days: int = 180, city: str = DEFAULT_CITY) -> pd.DataFrame:
     # 1. Fetch historical data
     df_raw = fetcher.fetch_open_meteo_historical(start_date=start_str, end_date=end_str)
     
-    # 2. Fetch live recent (past 48h + next 24h) to attach up-to-date tail
+    # 2. Fetch live recent OBSERVED hours only (forecast_hours=0 prevents forecast-as-ground-truth leakage)
     try:
-        df_live = fetcher.fetch_live_recent(past_hours=48, forecast_hours=24)
+        df_live = fetcher.fetch_live_recent(past_hours=48, forecast_hours=0)
+        df_live = df_live[df_live["time"] <= pd.Timestamp.now()].copy()
         # Combine historical with live, drop duplicates by timestamp
         combined = pd.concat([df_raw, df_live], ignore_index=True)
         combined = combined.drop_duplicates(subset=["time"]).sort_values("time").reset_index(drop=True)

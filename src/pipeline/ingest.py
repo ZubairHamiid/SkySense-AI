@@ -28,24 +28,25 @@ def run_hourly_ingestion(city: str = DEFAULT_CITY, trigger_agents: bool = True):
     fetcher = DataFetcher(city=city)
     fs = FeatureStoreManager()
     
-    # 1. Fetch live recent observations (past 48 hours + next 24 hours)
-    df_live = fetcher.fetch_live_recent(past_hours=48, forecast_hours=24)
-    logger.info(f"Fetched {len(df_live)} live observation/forecast rows.")
+    # 1. Fetch live recent OBSERVED hours only (forecast_hours=0 prevents future leakage)
+    df_live = fetcher.fetch_live_recent(past_hours=48, forecast_hours=0)
+    df_live = df_live[df_live["time"] <= pd.Timestamp.now()].copy()
+    logger.info(f"Fetched {len(df_live)} live observed rows.")
     
-    # 2. Merge with existing historical raw observations
-    existing_raw = fs.get_raw_observations()
+    # 2. Merge with existing historical raw observations for this city
+    existing_raw = fs.get_raw_observations(city=city)
     if not existing_raw.empty:
         combined = pd.concat([existing_raw, df_live], ignore_index=True)
         combined = combined.drop_duplicates(subset=["time"]).sort_values("time").reset_index(drop=True)
     else:
         combined = df_live
         
-    fs.save_raw_observations(combined)
+    fs.save_raw_observations(combined, city=city)
     
     # 3. Compute Features and Targets
     logger.info("Computing engineered features...")
     df_features = compute_features(combined, is_training=True)
-    fs.save_features(df_features)
+    fs.save_features(df_features, city=city)
     logger.info(f"Feature Store updated with {len(df_features)} total feature rows.")
     
     # 4. Trigger the LangGraph Agentic Reasoning Layer

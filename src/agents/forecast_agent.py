@@ -33,7 +33,7 @@ def forecast_node(state: AgentWeatherState) -> AgentWeatherState:
             from src.pipeline.fetcher import DataFetcher
             from src.pipeline.feature_engineering import compute_features
             fetcher = DataFetcher(city=city)
-            df_live = fetcher.fetch_live_recent(past_hours=48, forecast_hours=24)
+            df_live = fetcher.fetch_live_recent(past_hours=48, forecast_hours=0)
             feat_df = compute_features(df_live, is_training=False)
             fs.save_raw_observations(df_live, city=city)
             fs.save_features(feat_df, city=city)
@@ -70,7 +70,9 @@ def forecast_node(state: AgentWeatherState) -> AgentWeatherState:
         if champ_tuple:
             model, meta = champ_tuple
             try:
-                pred = float(model.predict(X_latest)[0])
+                expected_feats = meta.get("feature_names", feature_cols)
+                X_in = pd.DataFrame([{f: float(latest_row.get(f, 0.0)) for f in expected_feats}]).fillna(0.0)
+                pred = float(model.predict(X_in)[0])
                 model_name = meta["model_name"]
                 model_fam = meta["family"]
             except Exception as e:

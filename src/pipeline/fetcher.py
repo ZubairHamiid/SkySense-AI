@@ -156,11 +156,12 @@ class DataFetcher:
         merged["city"] = self.city
         return self.impute_missing_values(merged)
         
-    def fetch_live_recent(self, past_hours: int = 48, forecast_hours: int = 24) -> pd.DataFrame:
+    def fetch_live_recent(self, past_hours: int = 48, forecast_hours: int = 0) -> pd.DataFrame:
         """
-        Fetches live recent observations (past 48 hours) plus next 24 hours forecast from Open-Meteo.
+        Fetches live recent observations (past_hours) from Open-Meteo.
+        Defaults to forecast_hours=0 so API forecasts never contaminate historical ground truth.
         """
-        logger.info(f"Fetching recent and forecast data for {self.city}...")
+        logger.info(f"Fetching recent observations for {self.city} (past={past_hours}h, forecast={forecast_hours}h)...")
         
         # Real-time forecast & recent observations
         weather_url = "https://api.open-meteo.com/v1/forecast"
@@ -236,7 +237,8 @@ class DataFetcher:
         else:
             merged["aqi"] = np.nan
             
-        merged["source"] = "open_meteo_live"
+        now_ts = pd.Timestamp.now()
+        merged["source"] = np.where(merged["time"] > now_ts, "open_meteo_forecast", "open_meteo_live")
         merged["city"] = self.city
         
         # If OpenWeather or AQICN API keys are set, fuse with them!
@@ -295,12 +297,13 @@ class DataFetcher:
 
     def impute_missing_values(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Documented Missing Value Imputation Strategy:
+        Zero-Leakage Causal Missing Value Imputation Strategy:
         1. Sort chronologically by time.
-        2. Short Gaps (<= 3 hours): Linear time-interpolation to preserve continuity.
-        3. Medium Gaps (4 to 24 hours): Rolling diurnal median for the specific hour of the day.
-        4. Long Gaps (> 24 hours) / Boundary NaNs: Global median for the metric.
-        5. Clamp values to physical meteorological bounds (e.g., Humidity: [0, 100], UV: [0, 16], AQI: [0, 500]).
+        2. Short Gaps (<= 3 hours): Strictly causal forward-fill (ffill) — NEVER looks into future timestamps.
+        3. Longer Gaps: Strictly causal expanding past-only median (expanding().median().shift(1))
+           so validation or future rows NEVER leak into earlier rows.
+        4. Initial Leading NaNs (at very start of series): Physical domain defaults.
+        5. Clamp values to physical meteorological bounds.
         """
         df = df.copy()
         df = df.sort_values("time").reset_index(drop=True)
@@ -311,29 +314,27 @@ class DataFetcher:
             "uv_index", "wind_speed_kmh", "wind_direction_deg"
         ]
         
-        df["hour_of_day"] = df["time"].dt.hour
+        defaults = {
+            "aqi": 75.0, "temperature_c": 24.0, "precipitation_mm": 0.0,
+            "precipitation_probability_pct": 0.0, "humidity_pct": 55.0,
+            "uv_index": 0.0, "wind_speed_kmh": 12.0, "wind_direction_deg": 180.0
+        }
         
         for col in target_metrics:
             if col not in df.columns:
                 df[col] = np.nan
                 
-            # Step 1: Linear interpolation for short sensor gaps (limit=3)
-            df[col] = df[col].interpolate(method="linear", limit=3, limit_direction="both")
+            # Step 1: Strictly causal forward-fill for short sensor gaps (up to 3 hours)
+            df[col] = df[col].ffill(limit=3)
             
-            # Step 2: Hourly diurnal group median
-            hourly_medians = df.groupby("hour_of_day")[col].transform("median")
-            df[col] = df[col].fillna(hourly_medians)
-            
-            # Step 3: Fallback global median
-            global_median = df[col].median()
-            if pd.isna(global_median):
-                defaults = {
-                    "aqi": 75.0, "temperature_c": 24.0, "precipitation_mm": 0.0,
-                    "precipitation_probability_pct": 0.0, "humidity_pct": 55.0,
-                    "uv_index": 3.0, "wind_speed_kmh": 12.0, "wind_direction_deg": 180.0
-                }
-                global_median = defaults.get(col, 0.0)
-            df[col] = df[col].fillna(global_median)
+            # Step 2: Strictly causal expanding past median (uses only rows < t, zero future leakage)
+            if df[col].isna().any():
+                causal_median = df[col].expanding(min_periods=1).median().shift(1)
+                df[col] = df[col].fillna(causal_median)
+                
+            # Step 3: Fallback to physical default only for leading NaNs at index 0
+            if df[col].isna().any():
+                df[col] = df[col].fillna(defaults.get(col, 0.0))
             
         # Physical meteorological bounds enforcement
         df["humidity_pct"] = df["humidity_pct"].clip(0.0, 100.0)
@@ -344,6 +345,5 @@ class DataFetcher:
         df["wind_direction_deg"] = df["wind_direction_deg"].clip(0.0, 360.0)
         df["aqi"] = df["aqi"].clip(0.0, 500.0)
         
-        df.drop(columns=["hour_of_day"], inplace=True)
         return df
 
