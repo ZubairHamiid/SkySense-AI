@@ -124,10 +124,8 @@ with col_nav1:
     st.markdown(
         '<div style="display:flex;align-items:center;gap:12px;">'
         f'<span style="display:inline-flex;align-items:center;">{brand_svg}</span>'
-        '<div>'
-        '<div style="font-weight:800;font-size:1.25rem;color:#ffffff;letter-spacing:-0.02em;">SkySense AI</div>'
-        '<div style="font-size:0.68rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;">Multi-Agent Atmospheric Core</div>'
-        '</div></div>',
+        '<div style="font-weight:800;font-size:1.3rem;color:#ffffff;letter-spacing:-0.02em;">SkySense AI</div>'
+        '</div>',
         unsafe_allow_html=True
     )
 
