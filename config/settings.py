@@ -115,13 +115,13 @@ FORECAST_HORIZON_HOURS = 24
 
 # API Keys (optional; project has full zero-cost Open-Meteo & rule-based fallbacks)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "")
 AQICN_API_KEY = os.getenv("AQICN_API_KEY", "")
 
 # Hopsworks Feature Store Configuration
 HOPSWORKS_API_KEY = os.getenv("HOPSWORKS_API_KEY", "")
-HOPSWORKS_PROJECT = os.getenv("HOPSWORKS_PROJECT", "AgentWeather")
+HOPSWORKS_PROJECT = os.getenv("HOPSWORKS_PROJECT", "skysense")
 
 # Drift thresholds
 DATA_DRIFT_PVALUE_THRESHOLD = float(os.getenv("DATA_DRIFT_PVALUE_THRESHOLD", "0.05"))

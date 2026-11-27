@@ -31,9 +31,15 @@ class HopsworksFeatureStore:
         try:
             import hopsworks
             logger.info(f"Connecting to Hopsworks project: {self.project_name}...")
-            self.project = hopsworks.login(api_key_value=self.api_key, project=self.project_name)
+            try:
+                self.project = hopsworks.login(api_key_value=self.api_key, project=self.project_name)
+            except Exception:
+                # Fallback to account's default project if project name differs
+                os.environ.pop("HOPSWORKS_PROJECT", None)
+                self.project = hopsworks.login(api_key_value=self.api_key)
+                self.project_name = self.project.name
             self.fs = self.project.get_feature_store()
-            logger.info("Successfully connected to Hopsworks Feature Store!")
+            logger.info(f"Successfully connected to Hopsworks Feature Store ({self.project.name})!")
             return True
         except Exception as e:
             logger.warning(f"Could not connect to Hopsworks ({e}). Using Local Feature Store.")

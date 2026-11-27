@@ -33,7 +33,7 @@ jobs:
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
-          HOPSWORKS_PROJECT: ${{ secrets.HOPSWORKS_PROJECT || 'AgentWeather' }}
+          HOPSWORKS_PROJECT: ${{ secrets.HOPSWORKS_PROJECT || 'skysense' }}
           OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
           AQICN_API_KEY: ${{ secrets.AQICN_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
