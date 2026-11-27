@@ -23,7 +23,7 @@ def evaluate_fixed_hazard_rules(forecast_24h: Dict[str, float]) -> List[Dict[str
             "value": aqi,
             "unit": "AQI",
             "threshold": 300,
-            "title": "Emergency Air Quality Alert: Hazardous Smog/Dust"
+            "title": "Air Quality Emergency"
         })
     elif aqi > 200:
         hazards.append({
@@ -32,7 +32,7 @@ def evaluate_fixed_hazard_rules(forecast_24h: Dict[str, float]) -> List[Dict[str
             "value": aqi,
             "unit": "AQI",
             "threshold": 200,
-            "title": "Severe Air Pollution Warning: Very Unhealthy"
+            "title": "Air Quality Warning"
         })
     elif aqi > 150:
         hazards.append({
@@ -41,16 +41,16 @@ def evaluate_fixed_hazard_rules(forecast_24h: Dict[str, float]) -> List[Dict[str
             "value": aqi,
             "unit": "AQI",
             "threshold": 150,
-            "title": "Elevated Air Pollution: Unhealthy for General Public"
+            "title": "Air Quality Alert"
         })
     elif aqi > 100:
         hazards.append({
             "metric": "aqi",
-            "level": "MODERATE_WARNING",
+            "level": "SENSITIVE_GROUPS",
             "value": aqi,
             "unit": "AQI",
             "threshold": 100,
-            "title": "Air Quality Advisory: Unhealthy for Sensitive Groups"
+            "title": "Air Quality Advisory"
         })
         
     # 2. Temperature Rules
