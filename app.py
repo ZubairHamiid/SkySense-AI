@@ -280,10 +280,10 @@ with tech_tabs[0]:
     with ag2:
         st.metric("Alert Agent", f"{len(alerts)} Active" if alerts else "Nominal")
     with ag3:
-        st.metric("Weather Report Agent", "Broadcast Ready" if state.get("weather_report") else "Pending")
+        st.metric("Weather Report Agent", "Ready" if state.get("weather_report") else "Pending")
     with ag4:
         ds_top = state.get("drift_status", {})
-        st.metric("Drift Agent", "Drift Flagged" if ds_top.get("overall_drift_detected") else "Calibrated")
+        st.metric("Drift Agent", "Drift Detected" if ds_top.get("overall_drift_detected") else "Calibrated")
 
     if alerts:
         st.markdown("##### Triggered Meteorological Hazards & 3-Audience Advisories")

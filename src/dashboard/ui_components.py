@@ -287,11 +287,19 @@ def inject_cinematic_theme_css():
     [data-testid="stMetricLabel"] {
         color: #94a3b8 !important;
         font-weight: 600 !important;
+        font-size: 0.78rem !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
     }
     [data-testid="stMetricValue"],
     [data-testid="stMetricValue"] > div {
         color: #f8fafc !important;
         font-weight: 700 !important;
+        font-size: 1.35rem !important;
+        line-height: 1.3 !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: unset !important;
     }
     [data-testid="stExpander"] {
         background-color: rgba(18, 24, 38, 0.72) !important;
