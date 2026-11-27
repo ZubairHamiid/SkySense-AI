@@ -693,8 +693,9 @@ def render_hero_header_html(
 
 def plot_model_comparison_bar(leaderboard_df: pd.DataFrame) -> go.Figure:
     """
-    Renders a grouped comparison bar chart of models across metrics.
-    Robust to column naming variations (e.g., 'Metric' vs 'Target Metric').
+    Renders a clean grouped bar chart comparing the BEST Validation RMSE per model family
+    across each atmospheric metric (prevents stacking multiple Classical_ML models together)
+    with top-aligned horizontal legend so x-axis labels never collide.
     """
     if leaderboard_df.empty:
         return go.Figure()
@@ -703,33 +704,55 @@ def plot_model_comparison_bar(leaderboard_df: pd.DataFrame) -> go.Figure:
     x_col = "Metric" if "Metric" in df.columns else ("Target Metric" if "Target Metric" in df.columns else df.columns[0])
     color_col = "Family" if "Family" in df.columns else ("Model Family" if "Model Family" in df.columns else "Model")
     y_col = "Validation RMSE" if "Validation RMSE" in df.columns else df.columns[3]
-    
+
+    # Pick the best (lowest RMSE) model per (Metric, Family) so bars are true RMSE, not stacked sums
+    df = df.sort_values(y_col, ascending=True).drop_duplicates(subset=[x_col, color_col]).copy()
+    df["Family_Clean"] = df[color_col].astype(str).str.replace("_", " ")
+    metric_pretty = {
+        "aqi": "AQI",
+        "temperature_c": "Temp (°C)",
+        "precipitation_mm": "Precip (mm)",
+        "humidity_pct": "Humidity (%)",
+        "uv_index": "UV Index",
+        "wind_speed_kmh": "Wind (km/h)",
+    }
+    df["Metric_Clean"] = df[x_col].map(lambda v: metric_pretty.get(str(v), str(v)))
+
     hover_cols = [c for c in ["Model", "Validation R²", "Validation MAE"] if c in df.columns]
-    
+
     fig = px.bar(
         df,
-        x=x_col,
+        x="Metric_Clean",
         y=y_col,
-        color=color_col,
+        color="Family_Clean",
         barmode="group",
         hover_data=hover_cols,
-        title="<b>Validation RMSE Comparison Across Model Families</b>",
+        title="<b>Best Validation RMSE by Model Family (Lower is Better)</b>",
         template="plotly_dark",
         color_discrete_map={
-            "Classical_ML": "#38bdf8",
+            "Classical ML": "#38bdf8",
             "Statistical": "#f59e0b",
-            "Deep_Learning": "#a855f7",
-            "Baseline": "#64748b"
+            "Deep Learning": "#a855f7",
+            "Baseline": "#64748b",
         }
     )
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(15, 23, 42, 0.4)",
-        margin=dict(l=10, r=10, t=42, b=50),
-        height=320,
+        margin=dict(l=12, r=12, t=72, b=42),
+        height=340,
         xaxis_title="Atmospheric Metric",
         yaxis_title="Validation RMSE",
-        legend=dict(orientation="h", yanchor="bottom", y=-0.32, xanchor="center", x=0.5, title_text="")
+        title=dict(x=0.0, xanchor="left", y=0.96, font=dict(size=14, color="#f8fafc")),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="left",
+            x=0.0,
+            title_text="",
+            font=dict(size=11, color="#cbd5e1")
+        )
     )
     return fig
 

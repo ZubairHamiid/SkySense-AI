@@ -422,8 +422,8 @@ with tech_tabs[4]:
             fig_d = px.line(diurnal_df, x="hour", y=["temperature_c", "aqi"], markers=True, template="plotly_dark")
             fig_d.update_layout(
                 paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                margin=dict(l=10, r=10, t=10, b=40), height=320,
-                legend=dict(orientation="h", yanchor="bottom", y=-0.28, xanchor="center", x=0.5, title_text="")
+                margin=dict(l=10, r=10, t=40, b=30), height=320,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0.0, title_text="")
             )
             st.plotly_chart(fig_d, use_container_width=True, config={"displayModeBar": False})
 
