@@ -210,7 +210,13 @@ for c in _sidebar_cities:
 col_left, col_right = st.columns([1, 2.2], gap="large")
 
 with col_left:
-    st.markdown(render_left_panel_html(selected_city, aqi_val, cat_name, bg_col, text_col, cities_summary), unsafe_allow_html=True)
+    st.markdown(
+        render_left_panel_html(
+            selected_city, aqi_val, cat_name, bg_col, text_col,
+            cities_summary, forecast_24h=f24, alerts=state.get("alerts", [])
+        ),
+        unsafe_allow_html=True
+    )
 
 with col_right:
     st.markdown(

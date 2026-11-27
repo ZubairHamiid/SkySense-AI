@@ -162,37 +162,73 @@ def evaluate_fixed_hazard_rules(forecast_24h: Dict[str, float]) -> List[Dict[str
 
 
 def generate_deterministic_alert_fallback(hazards: List[Dict[str, Any]], city: str) -> str:
-    """Deterministic, high-quality rule-based safety advisory when LLM is unavailable."""
+    """Condition-aware rule-based safety advisory tailored specifically to the active hazards."""
     if not hazards:
         return (
             f"🟢 NORMAL CONDITIONS FOR {city.upper()}:\n"
             "All predicted weather and air quality parameters are within standard, safe thresholds. "
             "No active meteorological hazards are projected for the next 24 hours."
         )
-        
+
     hazard_titles = [f"- {h['title']} ({h['value']} {h['unit']})" for h in hazards]
     hazard_summary = "\n".join(hazard_titles)
-    
-    return f"""🚨 METEOROLOGICAL HAZARD ALERT FOR {city.upper()}
-==================================================
-Active Hazard Triggers:
-{hazard_summary}
+    metrics_triggered = {h["metric"] for h in hazards}
+    levels_triggered = {h["level"] for h in hazards}
 
-1. 👥 GUIDANCE FOR THE GENERAL PUBLIC:
-- Minimize unnecessary travel during peak hazardous windows.
-- Seal windows and use indoor air purifiers/AC recirculation if AQI is elevated.
-- Maintain adequate hydration and carry protective umbrellas or windwear.
+    pub_lines, sens_lines, work_lines = [], [], []
 
-2. 🫁 GUIDANCE FOR SENSITIVE GROUPS (Asthmatics, Elderly, Children):
-- Avoid all strenuous outdoor exertion; remain in climate-controlled indoor environments.
-- Keep rescue inhalers and essential pulmonary/cardiac medications within reach.
-- Wear N95-grade particulate respirators if brief outdoor transit is mandatory.
+    if "aqi" in metrics_triggered:
+        if "HAZARDOUS" in levels_triggered or "VERY_UNHEALTHY" in levels_triggered:
+            pub_lines.append("- Avoid outdoor exertion and seal doors/windows during peak smog hours.")
+            sens_lines.append("- Stay strictly indoors with air purification; keep rescue inhalers within reach.")
+            work_lines.append("- Mandatory N95/P100 particulate respirators and frequent indoor recovery breaks.")
+        elif "UNHEALTHY" in levels_triggered:
+            pub_lines.append("- Limit prolonged outdoor commutes and wear a mask along heavy traffic corridors.")
+            sens_lines.append("- Avoid strenuous outdoor activity; monitor breathing and cardiac symptoms.")
+            work_lines.append("- Wear certified N95 masks and rotate high-exertion outdoor shifts every 45 min.")
+        else:
+            pub_lines.append("- General travel is safe; reduce prolonged vigorous exercise near major roads.")
+            sens_lines.append("- Children, elderly, and asthmatics should shorten heavy outdoor activity.")
+            work_lines.append("- Use particulate masks in dusty zones or roadside operations.")
 
-3. 👷 GUIDANCE FOR OUTDOOR WORKERS (Laborers, Delivery Riders, Police):
-- Implement mandatory 15-minute shaded rest breaks for every 45 minutes of heavy activity.
-- Hydrate frequently with electrolyte-infused water (minimum 1 liter every 2 hours).
-- Wear certified N95 dust/smog respirators, UV-rated eye protection, and high-visibility raincoats as applicable.
-"""
+    if "temperature_c" in metrics_triggered:
+        if "COLD_WARNING" in levels_triggered:
+            pub_lines.append("- Dress in insulated warm layers and protect exposed pipes/crops from frost.")
+            sens_lines.append("- Keep elderly and young children in heated indoor spaces overnight.")
+            work_lines.append("- Provide thermal outerwear, gloves, and warm break areas for early-morning crews.")
+        else:
+            pub_lines.append("- Avoid direct sun between 11 AM and 4 PM; wear light cotton clothing and hydrate.")
+            sens_lines.append("- High heat-illness risk: stay in cooled environments and drink ORS/electrolytes.")
+            work_lines.append("- Enforce 15-min shaded rest breaks every 30–45 min and 1L electrolyte water every 2h.")
+
+    if "precipitation_mm" in metrics_triggered:
+        pub_lines.append("- Expect slick roads and localized urban flooding; avoid low-lying underpasses.")
+        sens_lines.append("- Stay dry indoors and plan medical/essential transit around peak rain bands.")
+        work_lines.append("- Issue waterproof PPE, anti-slip boots, and pause elevated/electrical tasks.")
+
+    if "uv_index" in metrics_triggered:
+        pub_lines.append("- Apply broad-spectrum SPF 30+ sunscreen and wear UV-blocking sunglasses.")
+        sens_lines.append("- Keep infants and sun-sensitive individuals out of direct midday sunlight.")
+        work_lines.append("- Mandate UV-rated safety eyewear, long sleeves, and shaded midday scheduling.")
+
+    if "wind_speed_kmh" in metrics_triggered:
+        pub_lines.append("- Secure loose rooftop/balcony objects and expect dust gusts on open highways.")
+        sens_lines.append("- Keep windows shut to block wind-blown dust and pollen.")
+        work_lines.append("- Halt crane/scaffolding operations and wear wrap-around eye protection.")
+
+    if "humidity_pct" in metrics_triggered:
+        pub_lines.append("- High heat-index humidity — slow outdoor pace and stay in ventilated spaces.")
+        sens_lines.append("- Monitor for heat exhaustion and stay in dehumidified/air-conditioned rooms.")
+        work_lines.append("- Increase cooling/electrolyte intervals to offset reduced sweat evaporation.")
+
+    return (
+        f"🚨 METEOROLOGICAL HAZARD ALERT FOR {city.upper()}\n"
+        "==================================================\n"
+        f"Active Hazard Triggers:\n{hazard_summary}\n\n"
+        "1. 👥 GUIDANCE FOR THE GENERAL PUBLIC:\n" + "\n".join(pub_lines) + "\n\n"
+        "2. 🫁 GUIDANCE FOR SENSITIVE GROUPS (Asthmatics, Elderly, Children):\n" + "\n".join(sens_lines) + "\n\n"
+        "3. 👷 GUIDANCE FOR OUTDOOR WORKERS (Laborers, Delivery Riders, Police):\n" + "\n".join(work_lines) + "\n"
+    )
 
 
 def alert_node(state: AgentWeatherState) -> AgentWeatherState:

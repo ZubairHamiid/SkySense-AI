@@ -385,52 +385,133 @@ def render_city_chips_html(cities_meta: Dict[str, Dict[str, Any]], active_city: 
     return "".join(chips_html)
 
 
-def render_left_panel_html(selected_city: str, aqi_val: float, cat_name: str, bg_col: str, text_col: str, cities_summary: Dict[str, Any]) -> str:
-    """Renders the left widget card without leading whitespace to prevent markdown code blocks."""
+def build_dynamic_advisories(forecast_24h: Dict[str, Any], alerts: List[Dict[str, Any]] = None) -> Tuple[str, str, str]:
+    """
+    Dynamically synthesizes tailored 1-line advisories for General Public, Sensitive Groups,
+    and Outdoor Workers based on the selected city's actual 24h forecast across all 6 metrics.
+    """
+    aqi = float(forecast_24h.get("aqi", 75.0))
+    temp = float(forecast_24h.get("temperature_c", 22.0))
+    rain = float(forecast_24h.get("precipitation_mm", 0.0))
+    hum = float(forecast_24h.get("humidity_pct", 55.0))
+    uv = float(forecast_24h.get("uv_index", 1.0))
+    wind = float(forecast_24h.get("wind_speed_kmh", 8.0))
+
+    pub_parts, sens_parts, work_parts = [], [], []
+
+    # 1. Air Quality tier
+    if aqi > 300:
+        pub_parts.append("Hazardous smog — stay indoors & keep windows tightly sealed.")
+        sens_parts.append("Emergency: avoid all outdoor air; run HEPA purifier & keep inhalers ready.")
+        work_parts.append("Suspend non-essential outdoor work; N95/P100 respirator mandatory.")
+    elif aqi > 200:
+        pub_parts.append("Very unhealthy air — avoid outdoor exertion & limit peak-hour travel.")
+        sens_parts.append("Stay indoors with air filtration; keep rescue medications accessible.")
+        work_parts.append("Mandatory N95 particulate PPE & frequent indoor/shaded recovery breaks.")
+    elif aqi > 150:
+        pub_parts.append("Unhealthy AQI — reduce prolonged outdoor activity & wear a mask in traffic.")
+        sens_parts.append("Avoid strenuous outdoor activity; monitor respiratory symptoms closely.")
+        work_parts.append("Wear N95 dust/smog masks & rotate heavy tasks every 45 minutes.")
+    elif aqi > 100:
+        pub_parts.append("Moderate haze — normal travel fine; cut back intense roadside exercise.")
+        sens_parts.append("Asthmatics, kids & elderly should shorten prolonged outdoor exertion.")
+        work_parts.append("Use particulate masks near heavy traffic or dusty construction zones.")
+    elif aqi > 50:
+        pub_parts.append("Acceptable air quality — comfortable for daily commutes and outdoor errands.")
+        sens_parts.append("Low risk; unusually sensitive individuals should monitor symptoms.")
+        work_parts.append("Standard outdoor operations safe; routine hydration recommended.")
+    else:
+        pub_parts.append("Clean air — ideal conditions for outdoor exercise & natural ventilation.")
+        sens_parts.append("Safe atmospheric quality for children, elderly, and respiratory groups.")
+        work_parts.append("Clear air — normal outdoor work shifts with standard safety gear.")
+
+    # 2. Temperature / Thermal modifier
+    if temp >= 40.0:
+        pub_parts.append("Extreme heat — avoid midday sun (11 AM–4 PM) & hydrate.")
+        sens_parts.append("High heatstroke risk — stay in cooled rooms & drink ORS.")
+        work_parts.append("Mandatory 15-min shaded hydration breaks every 30 min.")
+    elif temp >= 35.0:
+        pub_parts.append("Hot weather — wear light cotton & stay hydrated.")
+        sens_parts.append("Limit direct afternoon sun exposure.")
+        work_parts.append("Schedule heavy labor early morning & keep cool water on site.")
+    elif temp <= 12.0:
+        pub_parts.append(f"Chilly ({temp:.0f}°C) — wear warm layers, especially after sunset.")
+        sens_parts.append("Protect elderly & children from cold air to prevent chills.")
+        work_parts.append("Thermal jackets & gloves recommended for morning/night shifts.")
+
+    # 3. Rain / Wind / UV modifiers
+    if rain >= 6.0:
+        pub_parts.append("Heavy rain expected — watch for waterlogging & slick roads.")
+        sens_parts.append("Avoid wet/cold exposure during downpours.")
+        work_parts.append("Waterproof PPE, slip-resistant boots & pause elevated electrical work.")
+    elif rain >= 0.5:
+        pub_parts.append("Light rain possible — carry an umbrella.")
+        work_parts.append("Keep raincoats accessible & check footing on wet surfaces.")
+
+    if uv >= 8.0:
+        pub_parts.append("Very high UV — apply SPF 30+ sunscreen & sunglasses.")
+        work_parts.append("UV-rated eyewear & wide-brim helmets required outdoors.")
+
+    if wind >= 30.0:
+        pub_parts.append(f"Gusty winds ({wind:.0f} km/h) — secure loose outdoor items.")
+        work_parts.append("Halt crane/scaffold work & wear dust goggles.")
+    elif hum >= 80.0 and temp >= 30.0:
+        pub_parts.append("High muggy humidity — pace outdoor walking.")
+        work_parts.append("Increase electrolyte intake for high heat-index stress.")
+
+    return " ".join(pub_parts[:2]), " ".join(sens_parts[:2]), " ".join(work_parts[:2])
+
+
+def render_left_panel_html(
+    selected_city: str,
+    aqi_val: float,
+    cat_name: str,
+    bg_col: str,
+    text_col: str,
+    cities_summary: Dict[str, Any],
+    forecast_24h: Dict[str, Any] = None,
+    alerts: List[Dict[str, Any]] = None,
+) -> str:
+    """Renders the left widget card with dynamic condition-aware advisories and zero leading whitespace."""
     chips_html = render_city_chips_html(cities_summary, selected_city)
-    html = f"""<div class="widget-glass-card">
-<div>
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-<span style="font-size:0.8rem; color:#94a3b8; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">Air & Hazard Status</span>
-<span style="background:{bg_col}25; border:1px solid {bg_col}; color:{bg_col}; padding:3px 10px; border-radius:9999px; font-size:0.75rem; font-weight:700;">
-{cat_name.upper()}
-</span>
-</div>
-<div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:18px; padding:18px; margin-bottom:20px;">
-<div style="display:flex; justify-content:space-between; align-items:center;">
-<div>
-<div style="font-size:0.75rem; color:#94a3b8;">AQI Metric (24h Ahead)</div>
-<div style="font-size:2.4rem; font-weight:800; color:{bg_col}; font-family:'JetBrains Mono'; line-height:1.1;">{aqi_val:.0f}</div>
-</div>
-<div style="text-align:right;">
-<span style="background:{bg_col}; color:{text_col}; padding:4px 12px; border-radius:9999px; font-size:0.75rem; font-weight:800;">
-{cat_name.split(' ')[0]}
-</span>
-<div style="font-size:0.7rem; color:#94a3b8; margin-top:6px;">PM2.5 / PM10 EPA</div>
-</div>
-</div>
-</div>
-<div style="margin-bottom:20px;">
-<div style="font-size:0.8rem; color:#94a3b8; font-weight:600; text-transform:uppercase; margin-bottom:10px;">Targeted Advisories</div>
-<div style="background:rgba(59,130,246,0.1); border-left:3px solid #3b82f6; border-radius:8px; padding:10px 12px; margin-bottom:8px; font-size:0.8rem; color:#e2e8f0;">
-<b>👥 Public:</b> Limit peak-hour travel & seal windows during stagnant wind.
-</div>
-<div style="background:rgba(245,158,11,0.1); border-left:3px solid #f59e0b; border-radius:8px; padding:10px 12px; margin-bottom:8px; font-size:0.8rem; color:#e2e8f0;">
-<b>🫁 Sensitive:</b> Strict indoor air purification; keep rescue inhalers accessible.
-</div>
-<div style="background:rgba(239,68,68,0.1); border-left:3px solid #ef4444; border-radius:8px; padding:10px 12px; font-size:0.8rem; color:#e2e8f0;">
-<b>👷 Workers:</b> Mandatory N95 particulate PPE & 15-min shaded hydration breaks.
-</div>
-</div>
-<div>
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-<span style="font-size:0.8rem; color:#94a3b8; font-weight:600; text-transform:uppercase;">Major Basins</span>
-<span style="font-size:0.75rem; color:#38bdf8;">Real-Time</span>
-</div>
-{chips_html}
-</div>
-</div>
-</div>"""
+    f_dict = forecast_24h if forecast_24h else {"aqi": aqi_val}
+    pub_adv, sens_adv, work_adv = build_dynamic_advisories(f_dict, alerts)
+
+    # Dynamic border colors based on severity
+    pub_col = "#ef4444" if aqi_val > 200 else ("#f59e0b" if aqi_val > 100 else "#10b981")
+    sens_col = "#ef4444" if aqi_val > 150 else ("#f59e0b" if aqi_val > 100 else "#38bdf8")
+    work_col = "#ef4444" if aqi_val > 200 else ("#f59e0b" if aqi_val > 100 else "#3b82f6")
+
+    html = (
+        '<div class="widget-glass-card"><div>'
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'
+        '<span style="font-size:0.8rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Air & Hazard Status</span>'
+        f'<span style="background:{bg_col}25;border:1px solid {bg_col};color:{bg_col};padding:3px 10px;border-radius:9999px;font-size:0.75rem;font-weight:700;">{cat_name.upper()}</span>'
+        '</div>'
+        '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:18px;padding:18px;margin-bottom:20px;">'
+        '<div style="display:flex;justify-content:space-between;align-items:center;">'
+        '<div>'
+        '<div style="font-size:0.75rem;color:#94a3b8;">AQI Metric (24h Ahead)</div>'
+        f'<div style="font-size:2.4rem;font-weight:800;color:{bg_col};font-family:\'JetBrains Mono\';line-height:1.1;">{aqi_val:.0f}</div>'
+        '</div>'
+        '<div style="text-align:right;">'
+        f'<span style="background:{bg_col};color:{text_col};padding:4px 12px;border-radius:9999px;font-size:0.75rem;font-weight:800;">{cat_name.split(" ")[0]}</span>'
+        '<div style="font-size:0.7rem;color:#94a3b8;margin-top:6px;">PM2.5 / PM10 EPA</div>'
+        '</div></div></div>'
+        '<div style="margin-bottom:20px;">'
+        f'<div style="font-size:0.8rem;color:#94a3b8;font-weight:600;text-transform:uppercase;margin-bottom:10px;">Targeted Advisories — {selected_city}</div>'
+        f'<div style="background:rgba(59,130,246,0.08);border-left:3px solid {pub_col};border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:0.8rem;color:#e2e8f0;"><b>👥 Public:</b> {pub_adv}</div>'
+        f'<div style="background:rgba(245,158,11,0.08);border-left:3px solid {sens_col};border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:0.8rem;color:#e2e8f0;"><b>🫁 Sensitive:</b> {sens_adv}</div>'
+        f'<div style="background:rgba(239,68,68,0.08);border-left:3px solid {work_col};border-radius:8px;padding:10px 12px;font-size:0.8rem;color:#e2e8f0;"><b>👷 Workers:</b> {work_adv}</div>'
+        '</div>'
+        '<div>'
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
+        '<span style="font-size:0.8rem;color:#94a3b8;font-weight:600;text-transform:uppercase;">Major Basins</span>'
+        '<span style="font-size:0.75rem;color:#38bdf8;">Real-Time</span>'
+        '</div>'
+        f'{chips_html}'
+        '</div></div></div>'
+    )
     return html
 
 
