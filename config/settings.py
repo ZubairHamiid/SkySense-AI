@@ -2,8 +2,22 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env if present
+# Load .env if present (local development)
 load_dotenv()
+
+
+def _get_secret(key: str, default: str = "") -> str:
+    """Reads config from environment variables (.env / GitHub Actions) or Streamlit Cloud st.secrets."""
+    val = os.getenv(key, "").strip()
+    if val:
+        return val
+    try:
+        import streamlit as st
+        if key in st.secrets:
+            return str(st.secrets[key]).strip()
+    except Exception:
+        pass
+    return default
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
@@ -113,15 +127,15 @@ METRICS = [
 # Forecast horizon: 24 hours ahead
 FORECAST_HORIZON_HOURS = 24
 
-# API Keys (optional; project has full zero-cost Open-Meteo & rule-based fallbacks)
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
-OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "")
-AQICN_API_KEY = os.getenv("AQICN_API_KEY", "")
+# API Keys (reads from .env, GitHub Actions env, or Streamlit Cloud st.secrets)
+GROQ_API_KEY = _get_secret("GROQ_API_KEY", "")
+GROQ_MODEL = _get_secret("GROQ_MODEL", "openai/gpt-oss-20b")
+OPENWEATHER_API_KEY = _get_secret("OPENWEATHER_API_KEY", "")
+AQICN_API_KEY = _get_secret("AQICN_API_KEY", "")
 
 # Hopsworks Feature Store Configuration
-HOPSWORKS_API_KEY = os.getenv("HOPSWORKS_API_KEY", "")
-HOPSWORKS_PROJECT = os.getenv("HOPSWORKS_PROJECT", "skysense")
+HOPSWORKS_API_KEY = _get_secret("HOPSWORKS_API_KEY", "")
+HOPSWORKS_PROJECT = _get_secret("HOPSWORKS_PROJECT", "skysense")
 
 # Drift thresholds
 DATA_DRIFT_PVALUE_THRESHOLD = float(os.getenv("DATA_DRIFT_PVALUE_THRESHOLD", "0.05"))
