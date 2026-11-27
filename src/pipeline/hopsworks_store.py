@@ -61,9 +61,11 @@ class HopsworksFeatureStore:
                 version=version,
                 primary_key=["timestamp_ms"],
                 event_time="timestamp_ms",
-                description="AgentWeather hourly engineered features and targets"
+                time_travel_format="HUDI",
+                online_enabled=False,
+                description="SkySense AI hourly engineered features and targets"
             )
-            fg.insert(df_sync)
+            fg.insert(df_sync, storage="offline", write_options={"wait_for_job": False})
             logger.info(f"Successfully synced {len(df_sync)} records to Hopsworks Feature Group: {feature_group_name}")
             return True
         except Exception as e:
@@ -92,7 +94,7 @@ class HopsworksFeatureStore:
                 },
                 description=f"SkySense AI 24h-ahead champion model for {metric} ({model_name})"
             )
-            hw_model.save(str(model_file_path))
+            hw_model.save(str(model_file_path), keep_original_files=True)
             logger.info(f"Champion model [{metric}/{model_name}] uploaded to Hopsworks Model Registry!")
             return True
         except Exception as e:

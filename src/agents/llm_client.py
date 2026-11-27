@@ -43,18 +43,23 @@ class LLMClient:
         # 1. Attempt Groq API call if client is initialized
         if self.client:
             try:
-                chat_completion = self.client.chat.completions.create(
+                req_kwargs = dict(
                     messages=[
                         {"role": "system", "content": system_instruction},
                         {"role": "user", "content": prompt}
                     ],
                     model=self.model,
                     temperature=0.4,
-                    max_tokens=800,
-                    timeout=15.0
+                    max_tokens=2048,
+                    timeout=12.0,
                 )
+                if "gpt-oss" in self.model:
+                    req_kwargs["reasoning_effort"] = "low"
+                chat_completion = self.client.chat.completions.create(**req_kwargs)
                 latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
-                response_text = chat_completion.choices[0].message.content.strip()
+                response_text = (chat_completion.choices[0].message.content or "").strip()
+                if not response_text:
+                    raise ValueError("Groq returned empty content payload")
                 
                 # Log success
                 self.fs.log_agent_call(
