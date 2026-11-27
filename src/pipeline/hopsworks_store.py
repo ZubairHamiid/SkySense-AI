@@ -52,9 +52,13 @@ class HopsworksFeatureStore:
             
         try:
             df_sync = df.copy()
-            # Hopsworks expects unix timestamp in milliseconds or integer/string for time
+            # Hopsworks expects unix timestamp in milliseconds as int64 and consistent float64 for metrics
             if "time" in df_sync.columns:
+                df_sync["time"] = pd.to_datetime(df_sync["time"])
                 df_sync["timestamp_ms"] = (df_sync["time"].astype("int64") // 10**6).astype("int64")
+            for col in df_sync.columns:
+                if col not in ("time", "city", "source", "timestamp_ms") and pd.api.types.is_numeric_dtype(df_sync[col]):
+                    df_sync[col] = df_sync[col].astype("float64")
                 
             fg = self.fs.get_or_create_feature_group(
                 name=feature_group_name,
