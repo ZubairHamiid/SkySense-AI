@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 
 from config.settings import METRICS, FORECAST_HORIZON_HOURS, DEFAULT_CITY
@@ -25,22 +25,46 @@ def forecast_node(state: AgentWeatherState) -> AgentWeatherState:
     registry = ModelRegistry()
     city = state.get("city", DEFAULT_CITY)
     
-    # 1. Fetch latest feature record for target city
+    # 1. Fetch latest feature record for target city & auto-refresh live if stale (>2h old)
     feat_df = fs.get_features(city=city)
-    if feat_df.empty or ("city" in feat_df.columns and city.lower() not in feat_df["city"].str.lower().values):
-        logger.info(f"Target city [{city}] features not pre-cached. Ingesting live atmospheric observations for {city}...")
+    now_pkt = pd.Timestamp(datetime.now(timezone(timedelta(hours=5))).replace(tzinfo=None))
+
+    needs_live_refresh = feat_df.empty or (
+        "city" in feat_df.columns and city.lower() not in feat_df["city"].str.lower().values
+    )
+    if not needs_live_refresh and "time" in feat_df.columns:
+        try:
+            max_cached_time = pd.to_datetime(feat_df["time"]).max()
+            if pd.isna(max_cached_time) or (now_pkt - max_cached_time) > pd.Timedelta(hours=2):
+                needs_live_refresh = True
+                logger.info(f"[{city}] Cached features stale (last={max_cached_time}, now={now_pkt.strftime('%Y-%m-%d %H:%M')} PKT). Fetching live telemetry...")
+        except Exception:
+            needs_live_refresh = True
+
+    if needs_live_refresh:
         try:
             from src.pipeline.fetcher import DataFetcher
             from src.pipeline.feature_engineering import compute_features
             fetcher = DataFetcher(city=city)
             df_live = fetcher.fetch_live_recent(past_hours=48, forecast_hours=0)
-            feat_df = compute_features(df_live, is_training=False)
-            fs.save_raw_observations(df_live, city=city)
-            fs.save_features(feat_df, city=city)
-            logger.info(f"Live features successfully computed for [{city}].")
+            df_live["time"] = pd.to_datetime(df_live["time"])
+            df_live = df_live[df_live["time"] <= now_pkt].sort_values("time").reset_index(drop=True)
+            if not df_live.empty:
+                live_feats = compute_features(df_live, is_training=False)
+                if "city" not in live_feats.columns:
+                    live_feats["city"] = city
+                feat_df = live_feats
+                # Persist live tail locally (fast <50ms, never blocks UI with Hopsworks upload)
+                try:
+                    fs.local.save_raw_observations(df_live, city=city)
+                    fs.local.save_features(live_feats, city=city)
+                except Exception as save_err:
+                    logger.warning(f"Non-fatal live cache persist skipped: {save_err}")
+                logger.info(f"[{city}] Live telemetry synced up to {feat_df['time'].max()}.")
         except Exception as e:
-            logger.warning(f"Live fetch for [{city}] failed: {e}. Falling back to default features.")
-            feat_df = fs.get_features()
+            logger.warning(f"Live fetch for [{city}] failed ({e}). Using stored features.")
+            if feat_df.empty:
+                feat_df = fs.get_features()
 
     if feat_df.empty:
         err = f"Feature store empty for {city}. Cannot run forecast agent."

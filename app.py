@@ -362,11 +362,11 @@ with tech_tabs[3]:
         if not imp_df.empty:
             fig_imp = px.bar(
                 imp_df, x="Relative_Pct", y="Feature", orientation="h",
-                labels={"Relative_Pct": "Importance (%)", "Feature": "Driver"},
+                labels={"Relative_Pct": "Importance (%)", "Feature": ""},
                 color="Relative_Pct", color_continuous_scale="Tealgrn", template="plotly_dark"
             )
-            fig_imp.update_layout(yaxis=dict(autorange="reversed"), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(l=10, r=10, t=10, b=10), height=300)
-            st.plotly_chart(fig_imp, use_container_width=True)
+            fig_imp.update_layout(yaxis=dict(autorange="reversed"), coloraxis_showscale=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(l=8, r=12, t=10, b=10), height=300)
+            st.plotly_chart(fig_imp, use_container_width=True, config={"displayModeBar": False})
         else:
             st.info("Global importance unavailable for current metric.")
 
@@ -379,10 +379,11 @@ with tech_tabs[3]:
                     df_c = pd.DataFrame(shap_info["top_contributors"])
                     fig_shap = px.bar(
                         df_c, x="SHAP_Value", y="Feature", orientation="h",
+                        labels={"SHAP_Value": "SHAP Impact", "Feature": ""},
                         color="SHAP_Value", color_continuous_scale=["#38bdf8", "#94a3b8", "#ef4444"], template="plotly_dark"
                     )
-                    fig_shap.update_layout(yaxis=dict(autorange="reversed"), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(l=10, r=10, t=10, b=10), height=300)
-                    st.plotly_chart(fig_shap, use_container_width=True)
+                    fig_shap.update_layout(yaxis=dict(autorange="reversed"), coloraxis_showscale=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(l=8, r=12, t=10, b=10), height=300)
+                    st.plotly_chart(fig_shap, use_container_width=True, config={"displayModeBar": False})
             except Exception as e:
                 st.info(f"SHAP explanation unavailable: {e}")
 
@@ -395,10 +396,11 @@ with tech_tabs[3]:
                     df_lime = pd.DataFrame(lime_list, columns=["Rule", "Weight"])
                     fig_lime = px.bar(
                         df_lime, x="Weight", y="Rule", orientation="h",
+                        labels={"Weight": "Impact", "Rule": ""},
                         color="Weight", color_continuous_scale=["#38bdf8", "#94a3b8", "#f59e0b"], template="plotly_dark"
                     )
-                    fig_lime.update_layout(yaxis=dict(autorange="reversed"), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(l=10, r=10, t=10, b=10), height=300)
-                    st.plotly_chart(fig_lime, use_container_width=True)
+                    fig_lime.update_layout(yaxis=dict(autorange="reversed"), coloraxis_showscale=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(l=8, r=12, t=10, b=10), height=300)
+                    st.plotly_chart(fig_lime, use_container_width=True, config={"displayModeBar": False})
                 else:
                     st.info("LIME attribution unavailable for current metric.")
             except Exception as e:
